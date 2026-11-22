@@ -119,9 +119,6 @@ pub fn overlay_yaml(plugin_url: &str, product: &ProductRuntime) -> String {
 
 - id: better-sidebar
   disabled: {better_sidebar_disabled}
-  config:
-    presentation: slot
-    workspaceFence: false
 
 - id: harbor-evolution
   config:
@@ -269,7 +266,14 @@ mod tests {
         assert!(yaml.contains("name: dsh-codex-auth/image"));
         assert!(yaml.contains("id: better-sidebar"));
         assert!(yaml.contains("e.options.id !== 'better-sidebar' && !e.disabled"));
-        assert!(yaml.contains("presentation: slot\n    workspaceFence: false"));
+        let sidebar = yaml
+            .split("- id: better-sidebar\n")
+            .nth(1)
+            .unwrap()
+            .split("\n- id:")
+            .next()
+            .unwrap();
+        assert!(!sidebar.contains("\n  config:"));
         assert!(yaml.contains("id: yourbuddy-context-doctor"));
         assert!(yaml.contains("name: dsh-context-doctor"));
         assert!(yaml.contains("id: yourbuddy-ego-browser"));

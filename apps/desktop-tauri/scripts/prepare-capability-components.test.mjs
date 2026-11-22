@@ -66,7 +66,7 @@ test('rejects absent ordinary dependencies and a bundled second Cordis', t => {
 function coreFixture(root) {
   const harnessRoot = join(root, 'core')
   mkdirSync(harnessRoot)
-  writeJson(join(harnessRoot, 'package.json'), { name: 'core', private: true, packageManager: 'pnpm@11.7.0' })
+  writeJson(join(harnessRoot, 'package.json'), { name: 'core', private: true, packageManager: 'pnpm@11.28.5' })
   writeFileSync(join(harnessRoot, 'pnpm-workspace.yaml'), buildTrimmedWorkspaceYaml(readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8')))
   cpSync(join(desktopRoot, 'product/harness-pnpm-lock.yaml'), join(harnessRoot, 'pnpm-lock.yaml'))
   cpSync(join(repoRoot, 'patches'), join(harnessRoot, 'patches'), { recursive: true })
@@ -89,7 +89,8 @@ import { mkdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } fro
 import { createRequire } from 'node:module';
 import { join, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
-const [builtRoot, root, capability, mode] = process.argv.slice(1);
+const [builtRoot, root, capabilityPath, mode] = process.argv.slice(1);
+const capability = realpathSync(capabilityPath);
 const { boot, createRuntimeResolution, loadProfileDirectory, PluginPackages } = await import(pathToFileURL(join(builtRoot, 'packages/boot/app-boot/lib/index.js')));
 const profileRoot = join(root, 'profiles', 'web');
 mkdirSync(profileRoot, { recursive: true });
@@ -225,12 +226,12 @@ test('materializes the frozen package and loads its built entry through out-of-t
     time: { created: '2020-01-01T00:00:00Z', modified: '2020-01-01T00:00:00Z', '1.9.0': '2020-01-01T00:00:00Z' },
   }
   for (const directory of ['metadata', 'metadata-full']) {
-    const path = join(cacheHome, 'pnpm/v11', directory, 'registry.npmjs.org/@standard-schema/spec.jsonl')
+    const path = join(cacheHome, 'pnpm/v12', directory, 'https%3A+registry.npmjs.org/@standard-schema/spec.jsonl')
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, '{}\n' + JSON.stringify(alternate))
   }
   const unconstrained = join(root, 'unconstrained')
-  writeJson(join(unconstrained, 'package.json'), { private: true, packageManager: 'pnpm@11.7.0', dependencies: { '@standard-schema/spec': '^1.1.0' } })
+  writeJson(join(unconstrained, 'package.json'), { private: true, packageManager: 'pnpm@11.28.5', dependencies: { '@standard-schema/spec': '^1.1.0' } })
   const pnpmPath = join(repoRoot, 'node_modules/pnpm/bin/pnpm.mjs')
   assertSmoke(spawnSync(process.execPath, [pnpmPath, '--pm-on-fail=ignore', '--store-dir', options.storeRoot,
     'install', '--lockfile-only', '--offline', '--ignore-scripts', '--no-frozen-lockfile'], {
@@ -300,7 +301,7 @@ test('materializes the frozen package and loads its built entry through out-of-t
 
   const wrongPnpm = join(root, 'wrong-pnpm.mjs')
   writeFileSync(wrongPnpm, 'console.log("11.25.0")\n')
-  assert.throws(() => prepareCapabilityComponents({ ...options, pnpmPath: wrongPnpm }), /requires pnpm 11.7.0/)
+  assert.throws(() => prepareCapabilityComponents({ ...options, pnpmPath: wrongPnpm }), /requires pnpm 11.28.5/)
   assert.deepEqual(readJson(join(entry.root, 'package.json')), retainedManifest)
   assert.deepEqual(readFileSync(join(harnessRoot, 'pnpm-lock.yaml')), originalLock)
 })

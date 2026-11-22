@@ -1,14 +1,18 @@
 {
   "package": "dsh-codex-auth",
-  "version": "0.3.3-rc.4",
+  "version": "0.3.4-rc.2",
   "sourceKind": "npm-version",
-  "channel": "0.3.3-rc.4",
-  "source": "https://registry.npmjs.org/dsh-codex-auth/-/dsh-codex-auth-0.3.3-rc.4.tgz",
-  "integrity": "sha512-m5EnU+3Z4jmsUYyfW2Rsk8cUEVdmTpM1ZZ308h3UoswgVGBknswcKssQMsv87uDV3SPVW6vs1g23SaT/AA82hw==",
-  "archiveSha256": "7678a5400dfa866fb904c3ac3ad5e998a409ac02333d131df48bfd640ab74000",
-  "upstreamTreeSha256": "0cfc2cf3ceae2027b2e0eaf24681aebb819e89e85399d64ddf120b7e81f3589d",
-  "patches": [],
+  "channel": "0.3.4-rc.2",
+  "source": "https://registry.npmjs.org/dsh-codex-auth/-/dsh-codex-auth-0.3.4-rc.2.tgz",
+  "integrity": "sha512-V8ZzJudv62FJNt6XbDCD4jOplh3yg/LDQbSFniK9dxo/Eh9wq2CVowbiOXYGpE4IWf24nW8KFuqcxuxi6OO78Q==",
+  "archiveSha256": "671b82fa0d5bf2647fd699546aea238f52f8c687958609a55c0bd259aa4d35b5",
+  "upstreamTreeSha256": "78a2b539ce04a69784421ab7e0e95b6bb31d33d6253095569e291048e7d6200b",
+  "patches": [
+    "Set @deepseek-ai/dsh-compaction peer range from 0.2.1-rc.1 || 0.2.1-rc.2 to 0.2.2-rc.5.",
+    "Set @deepseek-ai/dsh-compaction-basic peer range from 0.2.1-rc.1 || 0.2.1-rc.2 to 0.2.2-rc.5.",
+    "Set @deepseek-ai/dsh-token-meter peer range from 0.2.1-rc.1 || 0.2.1-rc.2 to 0.2.2-rc.5."
+  ],
   "repository": "https://github.com/suntianc/dsh-codex-auth",
   "license": "MIT",
-  "treeSha256": "0cfc2cf3ceae2027b2e0eaf24681aebb819e89e85399d64ddf120b7e81f3589d"
+  "treeSha256": "ad8dc132e1db3c27675f708b3c0d851ff30ca057e29f56e7cf5be9d8cfba27c1"
 }

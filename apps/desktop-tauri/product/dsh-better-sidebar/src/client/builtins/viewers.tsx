@@ -1,23 +1,24 @@
 /**
- * The 4 built-in file viewer descriptors (image / markdown / html / code),
+ * The 4 built-in file viewer descriptors (markdown / html / jsonl / code),
  * exactly like external plugins register theirs.
  *
  * DSH 0.1.7 ships `ui-sidebar-documentpreview`, its own code / spreadsheet /
  * office / pdf / image / html / markdown / text previews with zoom and
- * auto-refresh. Native file-resource opens yield to those previews, while the
- * image viewer here remains the fallback for files opened inside this plugin's
- * own editor workbench. The plugin otherwise keeps only the surfaces where it
- * is not equivalent:
+ * auto-refresh, so this plugin yields every READ-ONLY preview it used to own
+ * and keeps only the surfaces where it is not equivalent:
  *  - `markdown` — this plugin's own renderer (front matter, embedded HTML
  *    sanitation, floating TOC), which the user prefers to the host's;
  *  - `html` — the sandboxed iframe preview plus the host-less
  *    `htmlViewerNoSandbox` / `htmlViewerDefaultUnsafe` escape hatches;
+ *  - `jsonl` — a record-per-row preview (the host maps `.jsonl` to its JSON
+ *    highlighter but renders it as one long text document) with the JSONL
+ *    editor behind the mode toggle;
  *  - `code` — the catch-all (`exts: []`, lowest priority) that claims any
  *    file no other viewer did, and it is an EDITABLE CodeMirror with save —
  *    the host's equivalents are read-only previews.
- * The yielded ids (pdf / binary-download) are deliberately NOT registered
- * here; an external plugin may still claim them through this service. Office
- * previews (.docx / .xlsx / .pptx) were already not built
+ * The yielded ids (image / pdf / binary-download) are deliberately NOT
+ * registered here; an external plugin may still claim them through this
+ * service. Office previews (.docx / .xlsx / .pptx) were already not built
  * in — they live in the recommended office plugin (see plugins-viewers.ts),
  * which registers the same ids through this service.
  *
@@ -32,7 +33,7 @@
  * and `icon` — so the Side card settings page can render the enable/disable
  * inventory without hardcoding (eating our own dogfood).
  */
-import { FileTypeIcon, IconCodeOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCodeOutlineRegular, IconPlayOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { lazyChunkComponent } from '../lazy-chunk.tsx'
 import {
   IconMarkdownOutline16,
@@ -41,7 +42,7 @@ import {
 import type { ComponentType } from 'react'
 import type { FileViewerDescriptor, FileViewerProps } from '../service.ts'
 import { t } from '../locales.ts'
-import css from '../sidebar.module.css'
+import { MediaPreview } from './media-preview.tsx'
 
 /**
  * Lazy wrapper over the chunk-resident viewer component. The `pick`
@@ -51,23 +52,9 @@ import css from '../sidebar.module.css'
  */
 const LazyTextEditor = lazyChunkComponent<FileViewerProps>('editor', (mod) => mod.TextEditor as ComponentType<FileViewerProps> | undefined)
 
-/** The 4 built-in file viewer descriptors. */
+/** The 5 built-in file viewer descriptors. */
 export function builtinViewers(): readonly FileViewerDescriptor[] {
   return [
-    {
-      id: 'image',
-      title: () => t('viewerImage'),
-      icon: (size: number) => <FileTypeIcon path="image.png" size={size} />,
-      exts: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'],
-      fetchStrategy: 'mediaUrl',
-      component: ({ mediaUrl: url, title }) => (
-        <div className={css.editorPdf}>
-          <div className={css.editorPdfStage}>
-            <img className={css.editorPdfFrame} style={{ objectFit: 'contain' }} src={url} alt={title} />
-          </div>
-        </div>
-      ),
-    },
     {
       id: 'markdown',
       title: () => t('viewerMarkdown'),
@@ -99,12 +86,54 @@ export function builtinViewers(): readonly FileViewerDescriptor[] {
       component: (props) => <LazyTextEditor {...props} />,
     },
     {
+      id: 'jsonl',
+      title: () => t('viewerJsonl'),
+      icon: (size: number) => <IconCodeOutlineRegular size={size} />,
+      // Newline-delimited JSON. It gets its own descriptor rather than riding
+      // the `code` catch-all so an external plugin can shadow exactly this
+      // format, and so the settings page can switch it off on its own.
+      exts: ['jsonl', 'ndjson'],
+      priority: 0,
+      fetchStrategy: 'fsRead',
+      // Same single gutter switch as the code viewer: the editor mode of a
+      // JSONL file is still an editable text surface.
+      settings: {
+        toggles: [{
+          key: 'editorGitGutter',
+          title: () => t('settingsEditorGitGutterTitle'),
+          desc: () => t('settingsEditorGitGutterDesc'),
+        }],
+      },
+      component: (props) => <LazyTextEditor {...props} />,
+    },
+    {
+      // Media containers. `mediaUrl` (not `fsRead`) is the whole point: the
+      // element streams the route and seeks through `Range`, while an fsRead
+      // viewer would first pay for a document read it cannot use.
+      id: 'media',
+      title: () => t('viewerMedia'),
+      icon: (size: number) => <IconPlayOutlineRegular size={size} />,
+      exts: ['mp4', 'm4v', 'webm', 'ogv', 'mov', 'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'oga', 'opus'],
+      fetchStrategy: 'mediaUrl',
+      component: (props) => <MediaPreview {...props} />,
+    },
+    {
       id: 'code',
       title: () => t('viewerCode'),
       icon: (size: number) => <IconCodeOutlineRegular size={size} />,
       exts: [],
       priority: -100,
       fetchStrategy: 'fsRead',
+      // Declarative settings: ONE switch for the whole uncommitted-change
+      // gutter (line tint + left bar + hover blame). Deliberately no
+      // per-part switches.
+      settings: {
+        toggles: [{
+          key: 'editorGitGutter',
+          title: () => t('settingsEditorGitGutterTitle'),
+          desc: () => t('settingsEditorGitGutterDesc'),
+        }],
+      },
       component: (props) => <LazyTextEditor {...props} />,
     },
   ]

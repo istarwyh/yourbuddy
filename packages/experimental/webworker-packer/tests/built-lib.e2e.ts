@@ -1,4 +1,4 @@
-/** Installed packer/runtime interoperability without either package's source tree. */
+/** Installed packer/runtime interoperability from published tarballs, without a workspace checkout. */
 import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -54,7 +54,8 @@ it('loads both tarballs through plain Node and mounts their base image and overl
     const archives = (await readdir(packRoot)).filter(file => file.endsWith('.tgz'))
     expect(archives).toHaveLength(1)
     await run('tar', ['-xzf', join(packRoot, archives[0]!), '-C', directory, '--strip-components=1'], root)
-    expect(existsSync(join(directory, 'src'))).toBe(false)
+    // The published payload carries the source tree; the consumer below resolves and runs `lib` alone.
+    expect(existsSync(join(directory, 'src'))).toBe(true)
     const manifest = JSON.parse(await readFile(join(directory, 'package.json'), 'utf8')) as {
       dependencies?: Record<string, string>
       peerDependencies?: Record<string, string>
@@ -85,7 +86,7 @@ it('loads both tarballs through plain Node and mounts their base image and overl
     const worker = fileURLToPath(import.meta.resolve('@deepseek-ai/dsh-experimental-webworker-runtime/worker'))
     assert.ok(existsSync(worker))
     assert.equal(readFileSync(worker, 'utf8').match(/^import[ \\t]/m), null)
-    const base = packer.packVfsImage({ config: '[]\\n', profile: 'packed-consumer', workspaces: new Map(), resolveFrom: process.cwd(), entries: [] })
+    const base = packer.packVfsImage({ profile: 'packed-consumer', roster: [], workspaces: new Map(), resolveFrom: process.cwd(), entries: [] })
     assert.deepEqual(base.missing, [])
     mkdirSync('subject/lib', { recursive: true })
     const subject = '@deepseek-ai/dsh-image-export-fixture'
@@ -94,7 +95,7 @@ it('loads both tarballs through plain Node and mounts their base image and overl
     } }))
     writeFileSync('subject/lib/index.js', 'export const value = 1')
     writeFileSync('subject/lib/index.d.ts', 'export declare const value: number')
-    const typedOptions = { config: '- id: subject\\n  name: "' + subject + '"\\n', profile: 'typed-consumer',
+    const typedOptions = { profile: 'typed-consumer', roster: [subject],
       workspaces: new Map([[subject, fileURLToPath(new URL('./subject', import.meta.url))]]),
       resolveFrom: process.cwd(), entries: [] }
     const typed = packer.packVfsImage(typedOptions)

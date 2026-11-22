@@ -36,16 +36,18 @@ harness 可以运行前台与后台命令、编辑文件和委派工作，但无
 
 agent scope dispose（资源释放）时先撤销注册，再等待全部所属 PTY 完全停稳。未发布的后端 setup 同样是受追踪的生命周期操作：owner 或服务 dispose 会中止服务自有的 signal，等待后端结算与回滚完成后才返回。即使后端 reject，或返回的会话在回滚 close 时失败，调用方取消仍会原样保留其 `AbortSignal.reason`；该清理失败不会替换调用方原因，而会继续受追踪，留待后续 owner 或服务 dispose 处理。由 lifecycle dispose 触发的回滚 close 失败会使 spawn 与该 lifecycle dispose 都 reject，而 `TerminalBackendCleanupError` 让后端在不替换调用方取消的前提下，为该 lifecycle dispose 保留自身的启动清理失败。若调用方取消在 dispose 开始前已经结算，该清理失败会继续作为受追踪的 owner activity 保留，直到后续 owner 或服务 dispose 消费并报告它，因此沙箱模式策略不会把清理失败误判为完全停稳。后端或工具插件 reload 不会遗留会话：所有权持续存放在 `TerminalSessionService` 中，直到 agent 结束，与 [`ctx.jobs`](../../../../packages/jobs/jobs/README.zh.md) 的服务持有记录模式一致。服务会先同步把会话预留给一次活跃发送，再返回该操作；后台发送同样会在 job id 对外可见前完成预留。第二次发送会以 `SEND_ACTIVE` 失败，因此输出与取消无法跨越操作所有权。
 
+[清理依赖提案](../../proposed/architecture/2026-10-09-cordis-cleanup-dependency-lifetimes.zh.md)区分提前关闭准入或可选通知与释放必需的完成观察器。PTY 所有权与完全停稳的清理要求仍然成立。
+
 ### 安全与进程边界
 
 注册的 `shell` 后端只约束终端如何启动，不约束启动后输入的命令。因此 `dsh-terminal-bash` 在 spawn 前应用两层保护：
 
 - 它只提供终端专用的环境覆盖；挂载的子进程提供方先清除名称形似凭据的环境变量，再合并这些覆盖。
-- 它要求共享的 `ctx.sandboxPolicy`。后端在 spawn 时，以部署默认值为底折叠 owner 的有效会话模式；`danger-full-access` 会直接启动 shell，受限模式则要求同一执行世界中存在 `ctx.sandbox` 提供方，并只包装一次 shell argv。该模式与 workspace root 在 PTY 的整个生命周期中充当进程边界。只要 owner 有任何已打开的 PTY 或尚未发布的 spawn，任何会改变生效 `sandbox/mode` 的写入都会在提交前被拒绝，并提示先等待创建操作结算，再关闭这些会话；不会改变生效模式的写入仍然有效。这项进行中的预留从后端 setup 持续到发布完成，因此不存在降级后又出现权限更宽的终端这一竞态。`danger-full-access` 是现有的显式无约束选择，不另设 PTY 私有 bypass。
+- 它要求共享的 `ctx.sandboxPolicy`。后端在 spawn 时，以部署默认值为底折叠 owner 的有效会话模式；`danger-full-access` 会直接启动 shell，受限模式则要求同一执行世界中存在 `ctx.sandbox` 提供方，并只包装一次 shell argv。该模式与 workspace root 在 PTY 的整个生命周期中充当进程边界。只要 owner 有任何已打开的 PTY 或尚未发布的 spawn，任何会改变生效 `sandbox/mode` 的写入都会在提交前被拒绝，并提示先等待创建操作结算，再关闭这些会话；不会改变生效模式的写入仍然有效。这项进行中的预留从后端 setup 持续到发布完成，因此不存在降级后又出现权限更宽的终端这一竞态。`danger-full-access` 是现有的显式无约束选择，不另设 PTY 私有 bypass。[Agent 终端面板决策](2026-10-12-agent-terminal-panel.zh.md)中的侧栏后端采用相同的启动策略，但不设这道切换模式的栅栏。
 
 沙箱限制本地进程副作用，但不会让任意 shell 输入自动安全：网络调用和其他外部副作用仍由部署策略治理。工具描述会说明 PTY 会话比一次性工具更难审计，只应在确实需要持久状态或交互式 stdin 时使用。
 
-本地子进程终端原语只使用 `node-pty` 的公开能力：子进程 PID、`data` 与 `exit` 通知、`write` 和 `kill`。它不假设能访问原生 master fd，也不从 TypeScript 调用 `waitpid`。在受支持的 Linux 宿主上，[原生收容 owner](../architecture/2026-08-28-subprocess-native-containment.zh.md)会在 user-systemd scope 内启动同一条 PTY 命令，同时保持 PID、session、控制终端、前台进程组与就绪语义。该原语下的平台进程检查器仍在 Linux 上通过 `/proc`、在 macOS 上通过 `ps` 推导前台进程组和 fallback 父子进程身份。[可移植执行环境决策](../architecture/2026-07-28-portable-execution-world-consumers.zh.md)负责定义这种进程／消费方拆分。
+本地子进程终端原语只使用 `node-pty` 的公开能力：子进程 PID、`data` 与 `exit` 通知、`write` 和 `kill`。它不假设能访问原生 master fd，也不从 TypeScript 调用 `waitpid`。在受支持的 Linux 宿主上，[原生收容 owner](../../../../packages/subprocess/subprocess-local/README.zh.md)会在 user-systemd scope 内启动同一条 PTY 命令，同时保持 PID、session、控制终端、前台进程组与就绪语义。该原语下的平台进程检查器仍在 Linux 上通过 `/proc`、在 macOS 上通过 `ps` 推导前台进程组和 fallback 父子进程身份。[可移植执行环境决策](../architecture/2026-07-28-portable-execution-world-consumers.zh.md)负责定义这种进程／消费方拆分。
 
 ### 6 个面向模型的工具
 

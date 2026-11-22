@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import type { MarkdownPathImages } from '@deepseek-ai/dsh-client-ui-primitives';
 import { type MarkdownCopyLabels } from './markdown-labels.tsx';
 import { type AnalyzedMarkdownHtml } from './markdown-html.ts';
 import type { SessionScope } from './api.ts';
@@ -11,7 +12,10 @@ export { LazyMermaidMarkdown } from './mermaid-lazy.tsx';
 export interface MarkdownHtmlMedia {
     scope: SessionScope;
     path: string;
-    origin: string;
+    /** The PAGE base, reverse-proxy prefix included (`hostHttpBase()`). */
+    baseUrl: string;
+    /** The owner's local-path image vocabulary for markdown runs. */
+    pathImages?: MarkdownPathImages | undefined;
 }
 interface MarkdownDocumentProps {
     info: AnalyzedMarkdownHtml;

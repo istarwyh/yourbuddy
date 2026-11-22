@@ -29,6 +29,7 @@ async function harness() {
   const next = vi.fn(async () => decision)
   const step = (turn = 1, index = 1) => agentEvents(ctx, child).waterfall('agent/pre-step', {
     turn, step: index, messages: [], signal: controller.signal,
+    modelSelection: { provider: 'test', model: 'test' },
   }, next)
   const idle = () => { status.mockReturnValue('idle'); agentEvents(ctx, parent).emit('agent/status', { status: 'idle' }) }
   return { ctx, parent, child, status, fiber, controller, decision, next, step, idle }

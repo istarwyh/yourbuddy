@@ -40,7 +40,7 @@ The following entry points reflect the current repository files. Source and docu
 |---|---|---|
 | Default experience | [Model connection](../../user/product/models.md), [workspaces](../../user/product/workspace.md), and [default plugins](../../user/product/plugins/index.md) | A new user completes and inspects a real artifact, distinguishing installed from ready |
 | Native extensions | [Architecture](../../architecture.md) and [plugin settings cards](../../cookbook/adding-a-settings-card.md) | An independent project contributes tools, settings, and UI through public APIs |
-| Development assistant | [Agent Preset package](../../../packages/preset/agent-preset/README.md) and its [plugin development Skill](../../../packages/preset/agent-preset/skills/cordis-plugin-development/SKILL.md) | Actual runtime API inspection guides implementation and reduces errors |
+| Development assistant | [Agent Preset package](../../../packages/preset/agent-preset/README.md) and its [DSH documentation and plugin development Skill](../../../packages/preset/agent-preset/skills/dsh-doc/SKILL.md) | Actual runtime API inspection guides implementation and reduces errors |
 | Dynamic experiments | [Dynamic plugin tools](../../../packages/extensions/tool-cordis/README.md) | Conversion from a temporary definition to an installable project, followed by fresh validation; an in-memory definition is not a persistent plugin |
 | Local integration | [Client modules and development reload](../../subsystems/client-modules.md) | Host, Client, and build feedback form a usable journey in a separate development instance |
 | Distribution | [Packaging and installation](../../user/develop/basic/publish.md) | A recipient installs, configures, and verifies restart using the same built artifact |

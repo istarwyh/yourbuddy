@@ -16,18 +16,14 @@
 
 import z from '@deepseek-ai/schemastery'
 import {
-  TITLE_BAR_STRIP_DEFAULT,
-  TITLE_BAR_STRIP_MAX,
-  TITLE_BAR_STRIP_MIN,
+  EXPLORER_EXCLUDE_DEFAULTS,
   type SidebarPrefs,
 } from './prefs-shared.ts'
 
 export {
+  EXPLORER_EXCLUDE_DEFAULTS,
   SIDEBAR_PREFS_DEFAULTS,
   SIDEBAR_PREFS_NS,
-  TITLE_BAR_STRIP_DEFAULT,
-  TITLE_BAR_STRIP_MAX,
-  TITLE_BAR_STRIP_MIN,
   type SidebarPrefs,
 } from './prefs-shared.ts'
 
@@ -36,31 +32,49 @@ export type SidebarPresentation = 'portal' | 'slot'
 
 /** Tunable sidebar host limits (every field optional; defaults fill in). */
 export interface SidebarConfig {
-  /** Render as the legacy viewport portal or occupy DSH's workbench slot. */
+  /** Render in the viewport portal or product workbench slot. */
   presentation?: SidebarPresentation
-  /** Read cap of one text file (bytes); larger files return truncated. */
-  readLimit?: number
-  /** Upload route cap (bytes); larger files are refused without touching disk. */
-  uploadLimit?: number
   /** Explorer row bound of one level. */
   listLimit?: number
+  /** Budget of ONE side-thread creation, milliseconds.
+   *
+   *  Creating a thread seeds it with the parent's whole log, so a large parent
+   *  makes this expensive and the old hard-coded 15 s aborted a legitimate
+   *  creation ("thread creation failed: The operation was aborted due to
+   *  timeout"). A deployment raises it when its histories are large. */
+  createTimeoutMs?: number
 }
 
-/** Schemastery schema for the deployment-provided plugin configuration. */
+/**
+ * Schemastery schema for the deployment-provided host limits.
+ *
+ * The three transfer/read caps this schema used to carry (`readLimit` /
+ * `mediaLimit` / `uploadLimit`) are gone: upload, download and the HTML
+ * preview route all stream now, so there is nothing left for a byte cap to
+ * protect and a large file is simply a large file. What replaced `readLimit`
+ * is {@link MAX_EDITABLE_BYTES} — not a transfer cap but the size above which
+ * a text file gets a read-only paged preview instead of an editor, because
+ * CodeMirror has to hold the whole document in the browser.
+ *
+ * Old profiles that still write the retired keys are harmless: schemastery
+ * tolerates unknown keys (the same property that keeps a legacy
+ * `workspaceFence` field in an old profile from being fatal).
+ */
 const LimitsSchema = z.object({
   presentation: z.union([z.const('portal'), z.const('slot')]).default('portal'),
-  readLimit: z.number().step(1).min(1).default(512 * 1024),
-  uploadLimit: z.number().step(1).min(1).default(128 * 1024 * 1024),
   listLimit: z.number().step(1).min(1).default(1000),
+  // Five seconds is below any real creation and ten minutes is the point where
+  // a stuck creation is better cancelled than waited on; an out-of-range or
+  // fractional value is a CONFIG ERROR, never a silent clamp.
+  createTimeoutMs: z.number().step(1).min(5_000).max(600_000).default(120_000),
 })
 
 /** Fully defaulted sidebar host settings. */
 export interface ResolvedSidebarConfig {
-  /** Host placement selected by the product composition. */
   presentation: SidebarPresentation
-  readLimit: number
-  uploadLimit: number
   listLimit: number
+  /** Budget of ONE side-thread creation, milliseconds. */
+  createTimeoutMs: number
 }
 
 /**
@@ -72,26 +86,40 @@ export interface ResolvedSidebarConfig {
 export function resolveSidebarConfig(config: SidebarConfig | undefined): ResolvedSidebarConfig {
   return {
     presentation: config?.presentation ?? 'portal',
-    readLimit: config?.readLimit ?? 512 * 1024,
-    uploadLimit: config?.uploadLimit ?? 128 * 1024 * 1024,
     listLimit: config?.listLimit ?? 1000,
+    createTimeoutMs: config?.createTimeoutMs ?? 120_000,
   }
 }
 
 // ── User-facing "Side card" preferences ─────────────────────────────────────
 
-/** Schemastery schema for the user-facing preferences (validated by the settings service). */
+/**
+ * Schemastery schema for the user-facing preferences (validated by the
+ * settings service).
+ *
+ * Asserted as `z<SidebarPrefs>` (the interface lives in `prefs-shared.ts`; the
+ * explicit annotation is also what keeps the emitted declaration portable).
+ * Unknown keys are TOLERATED by this schema and pass through untouched, which
+ * is what keeps a legacy `workspaceFence: true` — or the retired title-bar
+ * compatibility keys (`titleBarScheme` / `titleBarPresetId` /
+ * `titleBarCompat` / `titleBarStripPx`, removed with the whole strip
+ * mechanism) — in an old profile harmless instead of fatal.
+ */
 export const PrefsSchema: z<SidebarPrefs> = z.object({
   autoOpenSubagent: z.boolean().default(true),
   autoOpenJobs: z.boolean().default(true),
+  tasksViewMode: z.union([z.const('graph'), z.const('tree')]).default('graph'),
+  tasksAutoFoldSettled: z.boolean().default(true),
+  tasksAutoFoldBranches: z.boolean().default(true),
+  tasksAutoFoldIdle: z.boolean().default(true),
+  jobsAutoCollapse: z.boolean().default(true),
+  mobileNoAutoOpen: z.boolean().default(true),
+  mobileDefaultTree: z.boolean().default(true),
   agentOpenTools: z.boolean().default(false),
   editorExplorer: z.boolean().default(false),
-  workspaceFence: z.boolean().default(false),
-  titleBarScheme: z.union([z.const('auto'), z.const('web'), z.const('preset'), z.const('custom')]),
-  titleBarPresetId: z.string(),
+  editorGitGutter: z.boolean().default(true),
+  explorerExclude: z.array(z.string()).default([...EXPLORER_EXCLUDE_DEFAULTS]),
   customCss: z.string(),
-  titleBarCompat: z.boolean().default(false),
-  titleBarStripPx: z.number().step(1).min(TITLE_BAR_STRIP_MIN).max(TITLE_BAR_STRIP_MAX).default(TITLE_BAR_STRIP_DEFAULT),
   htmlViewerNoSandbox: z.boolean().default(false),
   htmlViewerDefaultUnsafe: z.boolean().default(false),
   // Per-feature enable switches are OPEN maps (any tab/viewer id, built-in or
@@ -104,6 +132,15 @@ export const PrefsSchema: z<SidebarPrefs> = z.object({
   // "settings seam" opening — without it the seam would drop third-party
   // keys as unknown schema fields.
   pluginSettings: z.dict(z.dict(z.any())).default({}),
+  // The start page's own layout preferences. `guideRows` is a MAXIMUM row
+  // count with no upper bound (the layout only ever slices the entry list);
+  // `guideOrder` and `guideHidden` are open maps so a third-party entry can
+  // appear or disappear without a schema migration.
+  guideRows: z.number().step(1).min(1).default(6),
+  guideOrder: z.array(z.string()).default([]),
+  guideHidden: z.dict(z.boolean()).default({}),
+  guideAlign: z.union([z.const('center'), z.const('top')]).default('center'),
+  guideTakeover: z.boolean().default(true),
 })
 
 // ── The Loader row schema ───────────────────────────────────────────────────

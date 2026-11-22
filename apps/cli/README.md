@@ -9,7 +9,7 @@ The `dsh` command is the sole supported Node application launcher: profiles are 
 | Command | Purpose |
 |---|---|
 | `dsh <name>` / `dsh --profile <name>` | Boot the named profile under `$DSH_HOME/profiles/<name>`. |
-| `dsh --profile <name> --from-default-profile <template>` | Create a new custom profile from a shipped template, then boot it. |
+| `dsh --profile <name> --from-default-profile <template>` | Replace a custom profile with a fresh copy of a shipped template, then boot it. |
 | `dsh --profile acp` | Serve automation clients over ACP stdio until disconnect. |
 | `dsh --profile headless "job"` | Run one fresh persisted session, print the final answer, and exit. |
 | `dsh --profile sdk` | Serve SDK clients over JSON-RPC stdio until shutdown or disconnect. |
@@ -17,7 +17,7 @@ The `dsh` command is the sole supported Node application launcher: profiles are 
 | `dsh web` | Boot the Web profile. |
 | `dsh plugin --profile <name> <pnpm args>` | Manage a profile's plugins by forwarding to pnpm in the profile directory. |
 
-The invoking directory is the default workspace root. The `web`, `headless`, `sdk`, `sdk-minimal`, and `acp` profiles auto-initialize on first use from shipped templates. Create another profile at an unused, non-shipped name with `--from-default-profile`, or initialize a base-backed profile through `dsh plugin`. The `desktop` name is reserved for the Electron-owned profile, so the CLI rejects boot and config-dump requests for it. The npm CLI also rejects its plugin-management requests; the [Desktop-installed command](../desktop/README.md#bundled-command-runtime) can manage the initialized Desktop profile using that installation’s runtime.
+The invoking directory is the default workspace root. The `web`, `headless`, `sdk`, `sdk-minimal`, and `acp` profiles auto-initialize on first use from shipped templates. Create or reset another profile at a non-shipped name with `--from-default-profile`, or initialize a base-backed profile through `dsh plugin`. The `desktop` name is reserved for the Electron-owned profile, so the CLI rejects boot and config-dump requests for it. The npm CLI also rejects its plugin-management requests; the [Desktop-installed command](../desktop/README.md#bundled-command-runtime) can manage the initialized Desktop profile using that installation’s runtime.
 
 ## App arguments
 
@@ -38,7 +38,7 @@ A profile directory holds a `package.json` (out-of-tree plugin dependencies plus
 
 Application-owned link installations may pass `--rollback-package=<package>` and `--rollback-expected=<JSON>` with `add link:<directory>`. The snapshot contains exactly `dependency` and `link`, each the original manifest string or raw symbolic-link target, with `null` for absence. The Profile owner compares both under its write lock and rejects a changed snapshot before pnpm. The CLI consumes the flag and delegates restoration under the Profile lock to the [plugin manager](../../packages/boot/plugin-manager/README.md); the package must match the linked manifest. Managed operations use captured, noninteractive output, a scrubbed environment, a ten-minute cancellation limit, and a two-minute silence limit so the operation owner can restore after cancellation. A successful package operation does not establish that the running Host mounted the new version.
 
-Installation and profile startup enforce declared DSH peer ranges against the same runtime version shown by `dsh --version`. Incompatible plugins require an explicitly acknowledged exact-version exemption. The [plugin manager's compatibility reference](../../packages/boot/plugin-manager/README.md#version-compatibility-and-exemptions) documents `version-exemptions`, `allow-version`, `revoke-version`, persistence, and risks.
+Installation and profile startup enforce the declared `engines.dsh` range, or DSH peer ranges when it is absent, against the same runtime version shown by `dsh --version`. Incompatible plugins require an explicitly acknowledged exact-version exemption. The [plugin manager's compatibility reference](../../packages/boot/plugin-manager/README.md#version-compatibility-and-exemptions) documents `version-exemptions`, `allow-version`, `revoke-version`, persistence, and risks.
 
 The tree composes over an empty root:
 - each bundle's patch in `dsh.profile.bundles` order
@@ -54,6 +54,12 @@ The [CLI behavior reference](reference/README.md) owns exact layer precedence, f
 ## Optional overlays
 
 `config/examples/` ships opt-in overlays for GitHub review webhooks, memory MCP servers, and runtime Cordis tools. They are never part of a default profile; the [user guides](../../docs/user/guide/index.md) and [developer practice guides](../../docs/user/develop/practice/index.md) own setup and safety instructions.
+
+## Installed payload
+
+The published tarball carries the bundled runtime under `lib/`, the TypeScript under `src/`, the declaration and JavaScript maps beside the files they describe, and the documentation under `docs/`. Only `prepack` stages `docs/`, and `postpack` removes that copy again, so a reader of the working tree sees whatever the checkout holds.
+
+`docs/` holds the documentation website's pages plus every upgrade guide, with the assets those pages reference. `docs/upgrade-guide/README.md` is generated during staging: it groups the guides by the release each `v<T>` directory upgrades from and lists each guide's title, English and Chinese descriptions, and relative paths. The Desktop application carries the same `docs/` and `src/` inside its `app.asar`. The generated `persistence-changes/` records, the `i18n/` guidelines, and the `*.i18n.yaml` consistency records are not published. Its pages keep the repository's relative links, so a link into `../packages/**` or into the omitted `persistence-changes/` records resolves only in a checkout.
 
 ## Development
 

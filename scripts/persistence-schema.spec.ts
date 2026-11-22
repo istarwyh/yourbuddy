@@ -7,7 +7,7 @@ import { assertV4RowAdmission } from '@deepseek-ai/dsh-session-format-v3-to-v4'
 import { collectLogEvents } from './gen-persistence-catalog.ts'
 import { extractPersistenceSchema, type PersistenceSchemaStage } from './persistence-schema.ts'
 import { classifyPersistenceChange, parsePersistenceSnapshot } from './persistence-changes.ts'
-import { canonicalizeSchema, isArbitraryJsonSchema, schemaDigest, type PersistenceSchemaInventory, type SchemaNode } from './persistence-schema-model.ts'
+import { canonicalizeSchema, encodePersistenceSnapshot, isArbitraryJsonSchema, schemaDigest, type PersistenceSchemaInventory, type SchemaNode } from './persistence-schema-model.ts'
 
 const timingStages = [
   'events', 'sources', 'program', 'diagnostics', 'reachable', 'model',
@@ -79,7 +79,7 @@ function assertRetiredHeaderRequiresVersionBump(inventory: PersistenceSchemaInve
     path: 'event:request/header.data.header.system',
     kind: 'type-changed',
     description: 'type changed',
-    requiresVersionBump: true,
+    requiresCompatibilityReview: true,
   }])
   expect(() => { assertV4RowAdmission({ type: 'request/header', data: { header: { system: 'retired text' } } }) })
     .toThrow('format v4 request/header rejects retired header.system')
@@ -233,7 +233,7 @@ describe('persistent source type extraction', () => {
     expect(inventory.types.some(type => type.names.includes('packages/domain/payload/src/types.ts#Section'))).toBe(true)
     expect(inventory.types.some(type => type.names.length === 0 && type.sources.includes('packages/domain/payload/src/types.ts:2'))).toBe(true)
     expect(inventory.types.some(type => type.schema.nodes[0]?.kind === 'array' && type.names.length === 0)).toBe(true)
-    expect(parsePersistenceSnapshot(inventory)).toEqual(inventory)
+    expect(parsePersistenceSnapshot(encodePersistenceSnapshot(inventory))).toEqual(inventory)
   })
 
   it('ignores alias names, files, documentation, readonly, brands and property order', () => {
@@ -524,7 +524,7 @@ describe('explicitly reserved JSON properties', () => {
     const before = extractedEvent('export interface Payload { id: string;\n/** @persistenceReserved */\ntool?: never }')
     const after = extractedEvent('export interface Payload { id: string; tool?: string }')
     expect(classifyPersistenceChange(before, after)).toEqual([expect.objectContaining({
-      path: 'event:test/record.data.tool', kind: 'type-changed', requiresVersionBump: true,
+      path: 'event:test/record.data.tool', kind: 'type-changed', requiresCompatibilityReview: true,
     })])
   })
 
@@ -598,8 +598,8 @@ describe('source compatibility authoring', () => {
     expect(property.compatibility).toEqual({ version: 1, policy: 'session-source-attribution', binding: `session.${role}-message.source`,
       discriminator: 'kind', unknownKinds: 'preserve', attributionKinds: ['attribution'] })
     expect(classifyPersistenceChange(before.roots.find(root => root.kind === 'event')!, root))
-      .toEqual([expect.objectContaining({ kind: 'attribution-kind-added', requiresVersionBump: false })])
-    expect(parsePersistenceSnapshot({ ...after, types: [] })).toEqual({ ...after, types: [] })
+      .toEqual([expect.objectContaining({ kind: 'attribution-kind-added', requiresCompatibilityReview: false })])
+    expect(parsePersistenceSnapshot(encodePersistenceSnapshot({ ...after, types: [] }))).toEqual({ ...after, types: [] })
   })
 
   it('binds inherited source declarations only on explicitly eligible required roles', () => {
@@ -680,18 +680,18 @@ declare module './message.js' {
 }`)
     const after = extractPersistenceSchema(root)
     expect(classifyPersistenceChange(before.roots.find(root => root.kind === 'event')!, after.roots.find(root => root.kind === 'event')!))
-      .toEqual([expect.objectContaining({ kind: 'attribution-kind-added', requiresVersionBump: false })])
+      .toEqual([expect.objectContaining({ kind: 'attribution-kind-added', requiresCompatibilityReview: false })])
   })
 
   it('does not qualify unmarked additions or structurally equal unbound fields', () => {
     const before = sourceFixture('')
     const after = sourceFixture("unmarked: {kind: 'new'}")
     expect(classifyPersistenceChange(extractPersistenceSchema(before).roots.find(root => root.kind === 'event')!,
-      extractPersistenceSchema(after).roots.find(root => root.kind === 'event')!).some(change => change.requiresVersionBump)).toBe(true)
+      extractPersistenceSchema(after).roots.find(root => root.kind === 'event')!).some(change => change.requiresCompatibilityReview)).toBe(true)
     const left = fixture("export interface Payload { source: {kind: 'old'} }")
     const right = fixture("export interface Payload { source: {kind: 'old'} | {kind: 'new'} }")
     expect(classifyPersistenceChange(extractPersistenceSchema(left).roots.find(root => root.kind === 'event')!,
-      extractPersistenceSchema(right).roots.find(root => root.kind === 'event')!).some(change => change.requiresVersionBump)).toBe(true)
+      extractPersistenceSchema(right).roots.find(root => root.kind === 'event')!).some(change => change.requiresCompatibilityReview)).toBe(true)
   })
 
   it.each([

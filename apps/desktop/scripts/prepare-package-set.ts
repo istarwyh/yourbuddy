@@ -25,13 +25,15 @@ import {
 } from '../src/core-package-set.ts'
 import { capture } from '../../../scripts/release/process.ts'
 import { tarballFiles } from '../../../scripts/release/tarball.ts'
-import { selectRuntimePackageClosure } from '../../../scripts/runtime-package-closure.ts'
-import { resolveDesktopTargetBuildPaths } from './desktop-build-paths.mjs'
+import { desktopTargetPlatform, resolveDesktopBuildTarget, resolveDesktopTargetBuildPaths } from './desktop-build-paths.mjs'
 
 const DSH_PACKAGE = '@deepseek-ai/dsh'
 const ROOT_PACKAGES = [DSH_PACKAGE, DESKTOP_HOST_PACKAGE] as const
 const APP_ROOT = resolve(import.meta.dirname, '..')
 const REPOSITORY_ROOT = resolve(APP_ROOT, '..', '..')
+
+const REQUIRED_DEPENDENCY_SECTIONS = ['dependencies', 'peerDependencies'] as const
+const OPTIONAL_DEPENDENCY_SECTION = 'optionalDependencies'
 
 /** Packed package information needed to form the local Desktop closure. */
 export interface PackedDesktopPackage {
@@ -39,19 +41,65 @@ export interface PackedDesktopPackage {
   readonly manifest: Readonly<Record<string, unknown>>
 }
 
+function supportsTarget(manifest: Readonly<Record<string, unknown>>, field: 'os' | 'cpu', target: string): boolean {
+  const values = manifest[field]
+  if (values === undefined) return true
+  if (!Array.isArray(values) || !values.every((value): value is string => typeof value === 'string')) {
+    throw new Error(`desktop package set: ${String(manifest.name)} has invalid ${field}`)
+  }
+  if (values.includes(`!${target}`)) return false
+  return values.length === 0 || (values.length === 1 && values[0] === 'any') || values.includes(target)
+    || values.every(value => value.startsWith('!'))
+}
+
+function dependencyNames(manifest: Readonly<Record<string, unknown>>, section: string): string[] {
+  const value = manifest[section]
+  if (value === undefined) return []
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`desktop package set: ${String(manifest.name)} has invalid ${section}`)
+  }
+  return Object.keys(value).sort()
+}
+
 /**
  * Select workspace dependencies rooted at dsh and its private Host; npm resolves external packages.
  * Reads the repository workspace manifest and package manifests to distinguish required local packages from npm-resolved externals.
  * @param available - Packed packages indexed by package name.
+ * @param target - Platform and architecture of the installer payload.
  * @returns Selected packages sorted by name.
  */
 export function selectDesktopPackageClosure(
   available: ReadonlyMap<string, PackedDesktopPackage>,
+  target: ReturnType<typeof desktopTargetPlatform>,
 ): PackedDesktopPackage[] {
   const workspace = yaml.load(readFileSync(join(REPOSITORY_ROOT, 'pnpm-workspace.yaml'), 'utf8')) as { packages: string[] }
   const workspaceNames = new Set(globSync(workspace.packages.map(pattern => `${pattern}/package.json`), { cwd: REPOSITORY_ROOT })
     .map(path => (JSON.parse(readFileSync(join(REPOSITORY_ROOT, path), 'utf8')) as { name: string }).name))
-  return selectRuntimePackageClosure(available, ROOT_PACKAGES, workspaceNames, 'desktop package set')
+  const selected = new Map<string, PackedDesktopPackage>()
+  const visit = (name: string): void => {
+    if (selected.has(name)) return
+    const packed = available.get(name)
+    if (packed === undefined) throw new Error(`desktop package set: packed inputs omit required package ${name}`)
+    selected.set(name, packed)
+    for (const section of REQUIRED_DEPENDENCY_SECTIONS) {
+      for (const dependency of dependencyNames(packed.manifest, section)) {
+        if (available.has(dependency)) visit(dependency)
+        else if (workspaceNames.has(dependency)) {
+          throw new Error(`desktop package set: ${name} requires unpacked package ${dependency}`)
+        }
+      }
+    }
+    for (const dependency of dependencyNames(packed.manifest, OPTIONAL_DEPENDENCY_SECTION)) {
+      const optional = available.get(dependency)
+      if (optional && supportsTarget(optional.manifest, 'os', target.platform)
+        && supportsTarget(optional.manifest, 'cpu', target.arch)) visit(dependency)
+    }
+  }
+  for (const name of ROOT_PACKAGES) {
+    if (!available.has(name)) throw new Error(`desktop package set: packed inputs omit ${name}`)
+    visit(name)
+  }
+  return [...selected.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([, packed]) => packed)
 }
 
 function packedManifest(tarball: string): Record<string, unknown> {
@@ -94,9 +142,16 @@ export function assertDesktopHostPackageFiles(files: readonly string[]): void {
   }
 }
 
-/** Prepare a package set from release tarball directories. */
-export function prepareDesktopPackageSet(inputs: readonly string[], output: string): void {
-  const selected = selectDesktopPackageClosure(packedPackages(inputs))
+/**
+ * Prepare a package set from release tarball directories.
+ * @param inputs - Release tarball directories.
+ * @param output - Destination package-set directory.
+ * @param target - Platform and architecture of the installer payload.
+ */
+export function prepareDesktopPackageSet(
+  inputs: readonly string[], output: string, target: ReturnType<typeof desktopTargetPlatform>,
+): void {
+  const selected = selectDesktopPackageClosure(packedPackages(inputs), target)
   const host = selected.find(packed => packed.manifest.name === DESKTOP_HOST_PACKAGE)
   if (host === undefined) throw new Error(`desktop package set: selected closure omits ${DESKTOP_HOST_PACKAGE}`)
   assertDesktopHostPackageFiles(tarballFiles(host.tarball))
@@ -138,7 +193,7 @@ function main(): void {
   })
   const inputs = (values.from ?? defaultInputs).map(path => resolve(REPOSITORY_ROOT, path))
   const output = values.out === undefined ? buildPaths.packageSet : resolve(REPOSITORY_ROOT, values.out)
-  prepareDesktopPackageSet(inputs, output)
+  prepareDesktopPackageSet(inputs, output, desktopTargetPlatform(resolveDesktopBuildTarget()))
   console.log(`desktop package set: prepared ${output}`)
 }
 

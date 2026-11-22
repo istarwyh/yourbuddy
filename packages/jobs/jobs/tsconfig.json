@@ -21,10 +21,10 @@
       "path": "../../core/agent"
     },
     {
-      "path": "../../core/session"
+      "path": "../../util/error"
     },
     {
-      "path": "../../runtime-diagnostics/invariants"
+      "path": "../../core/session"
     },
     {
       "path": "../../workspace/workspace"

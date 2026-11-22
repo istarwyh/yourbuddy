@@ -30,7 +30,7 @@ Workbook previews do not recalculate formulas. A missing saved result stays blan
 
 ### When a preview is incomplete
 
-For a missing-font warning, inspect its details and compare important pagination or Chinese text in the original application. For an unsupported, oversized, or failed preview, use the document header's **Open** menu to choose an installed application or **Show file location**. Unsupported and oversized files also offer this recovery action in the preview area. Size and conversion limits reject the preview rather than silently showing a truncated file; the [preview reference](../../../packages/client/ui-sidebar-documentpreview/README.md) and [conversion reference](../../../packages/document/office-to-pdf/README.md) describe the limits.
+For a missing-font warning, inspect its details and compare important pagination or Chinese text in the original application. For an unsupported, oversized, or failed preview, use the document header's **Open** menu to choose an installed application or **Show file location**. Unsupported and oversized files also offer this recovery action in the preview area. Size and conversion limits reject the preview rather than silently showing a truncated file; the [preview reference](../../../packages/client/ui-sidebar-documentpreview/README.md) and [conversion reference](../../../packages/document/office-kit/README.md) describe the limits.
 
 ### Offline use and privacy
 

@@ -27,6 +27,8 @@ kind: "package-library"
 
 当宿主侧集成需要执行一条原生命令、并需要它的输出或失败信息（或两者兼要）、且绝不能涉及 shell 时，使用本运行器。
 
+`isWsl()` 根据 WSL 环境或内核标记区分 WSL 中的 Linux 进程、普通 Linux 和原生 Windows 进程。Windows 互操作被禁用时仍识别为 WSL；调用方必须另行检查所需的 Windows 能力。
+
 ### 运行一条命令
 
 ```ts
@@ -68,7 +70,6 @@ const { stdout, stderr } = await runNativeCommand('osascript', ['-e', script], s
 | [`src/index.ts`](src/index.ts) | 命令运行器与路径打开器的公共导出 |
 | [`src/runner.ts`](src/runner.ts) | 无 shell 的 `execFile` 适配器 |
 | [`src/path-opener.ts`](src/path-opener.ts) | 桌面探测、打开意图、浏览器偏好与 WSL 转换 |
-| — | 不发布运行时不变式伴生入口；每次运行都是一次无状态的子进程往返，不拥有事件流或可变运行时数据；相关行为由单元测试保障。 |
 
 ### execFile 给了运行器什么
 

@@ -1,27 +1,25 @@
 // An enclosing `[data-conversation-scroll]` owns scrolling when present;
 // otherwise this view owns it. Each row subscribes to one stable node key.
 
-import { memo, useCallback, useMemo, useRef, useState, type ComponentProps } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
-  NodeKey, RenderEntry, RenderMessageImages,
+  NodeKey, RenderEntry,
 } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { InboxState } from '@deepseek-ai/dsh-agent/types'
 import type { PendingSubmission } from '@deepseek-ai/dsh-api-session-controller/client'
 import {
-  Button, IconChevronDownOutlineRegular, MarkdownDelegateProvider, Modal,
+  Button, FenceCodeBlock, IconChevronDownOutlineRegular, MarkdownDelegateProvider, Modal,
+  type MarkdownDelegateFenceInfo, type MarkdownMenuTarget,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { ChatViewSlotProps, OpenFileOptions } from '../contract/slots.ts'
+import { isAtOrOutside } from '../contract/group-tree.ts'
+import type { ChatFlowHookContext, ChatViewSlotProps, OpenFileOptions } from '../contract/slots.ts'
 import type { ChatSnapshot } from '../contract/snapshot.ts'
-import { PendingSteeringBubble, PendingSubmissionBubble } from './MessageItem.tsx'
-import { ChatNodeSeat } from './ChatNodeSeat.tsx'
-import { ChatGroupSeat } from './ChatGroupSeat.tsx'
-import { chatRenderKey } from './render-entry.ts'
-import { assertNever } from '@deepseek-ai/dsh-util-values'
+import { markdownLabels } from '../markdown-labels.ts'
 import { TurnNavigator } from './TurnNavigator.tsx'
-import { RunningStatus } from './RunningStatus.tsx'
 import { mergeTurnRailItems } from './turn-rail-items.ts'
+import { useTextInteraction } from './text-interaction.ts'
 import { useChatScroll } from './use-chat-scroll.ts'
-import { fileMediaUrl, resolveWorkspacePath } from '@deepseek-ai/dsh-util-workspace-path'
+import { fileMediaUrl, resolveWorkspacePath, sessionFileAddress } from '@deepseek-ai/dsh-util-workspace-path'
 import css from './ChatView.module.css'
 
 /** Host/OS refusal text for the file-open dialog; empty throws keep a locale fallback. */
@@ -43,83 +41,54 @@ function observedInputs(
   let lastInputTurn: number | undefined
   for (const key of order) {
     const node = nodes.get(key)
-    if (node === undefined || (node.kind !== 'user' && node.kind !== 'steering' && node.kind !== 'turn-trigger')) continue
+    if (node === undefined || !isAtOrOutside(node, 'input')) continue
     if (node.location.kind === 'turn' || node.location.kind === 'step') lastInputTurn = node.location.turn.turn
-    if (node.kind === 'turn-trigger') continue
-    const source = (node.data as { readonly source?: unknown }).source as
-      | { readonly kind?: unknown; readonly rpcId?: unknown }
-      | undefined
-    if (source?.kind === 'user' && typeof source.rpcId === 'string') observed.add(source.rpcId)
+    const data: unknown = node.data
+    const source = typeof data === 'object' && data !== null && 'source' in data ? data.source : undefined
+    if (typeof source === 'object' && source !== null && 'kind' in source && source.kind === 'user'
+      && 'rpcId' in source && typeof source.rpcId === 'string') observed.add(source.rpcId)
   }
   return { rpcIds: observed, lastInputTurn }
 }
 
 type PendingInput = PendingSubmission | InboxState['next-step'][number]
 
-type ChatNodeListProps = Omit<ComponentProps<typeof ChatNodeSeat>, 'nodeKey' | 'groupPart'> & {
-  readonly entries: readonly RenderEntry[]
-  readonly useChatGroup: ChatViewSlotProps['useChatGroup']
-  readonly pendingInputs: readonly PendingInput[]
-  readonly lastInputTurn: number | undefined
-}
-
-const ChatNodeList = memo(function ChatNodeList({ entries, useChatGroup, pendingInputs, lastInputTurn, ...seatProps }: ChatNodeListProps) {
-  const rows = entries.map((entry) => {
-    switch (entry.kind) {
-      case 'node':
-        return <ChatNodeSeat {...seatProps} key={chatRenderKey(entry)} nodeKey={entry.key}
-          {...entry.groupPart === undefined ? {} : { groupPart: entry.groupPart }} />
-      case 'group':
-        return <ChatGroupSeat {...seatProps} key={chatRenderKey(entry)} groupKey={entry.key} useChatGroup={useChatGroup} />
-      default:
-        return assertNever(entry)
-    }
-  })
-  const pendingRows = pendingInputs.map(item => 'requestId' in item ? (
-    <PendingSubmissionBubble key={item.requestId} submission={item}
-      renderMessageImages={seatProps.renderMessageImages} t={seatProps.t} />
-  ) : (
-    <PendingSteeringBubble key={item.id} content={item.content}
-      renderMessageImages={seatProps.renderMessageImages} t={seatProps.t} />
-  ))
-  const tail = entries.at(-1)
-  const node = tail?.kind === 'node' ? seatProps.nodeStore.get(tail.key) : undefined
-  // An empty opening control follows one local transcript echo, never steering.
-  // All rows share this keyed list so inserting the control keeps the echo mounted.
-  if (node?.kind === 'turn-process' && node.location.kind === 'turn'
-    && node.location.turn.status === 'open' && node.location.turn.turn !== lastInputTurn) {
-    const index = pendingInputs.findIndex(item => 'requestId' in item && item.placement === 'transcript')
-    if (index !== -1) rows.splice(rows.length - 1, 0, ...pendingRows.splice(index, 1))
-  }
-  return [...rows, ...pendingRows]
-})
+/** How long fold transitions stay enabled after a Turn stops running. */
+const MOTION_TAIL_MS = 800
 
 /**
  * The chat view slot entry: pure component over the composed props; each
  * ordered business Node crosses the keyed renderer seat.
  */
 export function ChatView({
-  useSession, useChat, useChatNode, useChatNodeProcess, useChatGroup, useConversation, useSessions, useStore, actions, renderSlot,
-  sessionId, openFile, openSkill, openExternalLink, retryOpen, loadOlder, loadThrough, loadImage,
-  inspectCall, chatScroll, forkAt, fileMentions,
-  usePresentation, useProjection, t,
+  useSession, useChat, useConversation, useSessions, renderSlot,
+  sessionId, openFile, openExternalLink, resolveFilePath, useContextMenu,
+  retryOpen, loadOlder, consumeOlder, loadThrough, loadImage, inspectCall, chatScroll, forkAt,
+  usePresentation, useProjection, useInteractionIds, dispatchInteraction, t, fileDrag,
 }: ChatViewSlotProps) {
+  const { getTriggerProps } = useContextMenu()
+  const getMarkdownTriggerProps = useCallback((target: MarkdownMenuTarget) => getTriggerProps(() => {
+    switch (target.kind) {
+      case 'file': return { kind: 'file', value: { sessionId, path: resolveFilePath(target.path),
+        ...(target.line === undefined ? {} : { line: target.line }) } }
+      case 'url': return { kind: 'url', value: { sessionId, url: target.url } }
+      case 'image': return { kind: 'image', value: { sessionId, url: target.url,
+        ...(target.name === undefined ? {} : { name: target.name }),
+        ...(target.mediaType === undefined ? {} : { mediaType: target.mediaType }),
+        ...(target.path === undefined ? {} : { path: resolveFilePath(target.path) }) } }
+    }
+  }), [getTriggerProps, resolveFilePath, sessionId])
   const order = useChat(s => s.order)
   const groupedEntries = useConversation(snapshot => snapshot.views.grouped('chat')?.entries)
   const entries = useMemo<readonly RenderEntry[]>(() => groupedEntries
     ?? order.map(key => ({ kind: 'node', key: key as NodeKey })), [groupedEntries, order])
   const nodeStore = useChat(s => s.nodes)
+  const deferCompletedTurns = usePresentation(policy => policy.collapseTiming === 'next-input')
+  const transcriptView = usePresentation(policy => policy.mode)
   // The rail's items are accumulated in the Chat snapshot, so this selector is
   // both the data and its change signal: the array identity moves only when a
   // Turn enters, leaves, or changes its preview.
   const turnNavigationItems = useChat(s => s.navigation.items())
-  const latestTurnAnchor = turnNavigationItems.at(-1)?.anchorKey
-  const runningStartTime = useChatNode(latestTurnAnchor ?? '', (node) => {
-    const location = node?.location
-    return location?.kind === 'turn' || location?.kind === 'step'
-      ? location.turn.status === 'open' ? location.turn.start?.time : undefined
-      : undefined
-  })
   // Host-computed whole-log outline; the merge is view-layer only (the
   // conversation snapshot never carries projection values).
   const turnOutline = useProjection('turnOutline')
@@ -127,21 +96,48 @@ export function ChatView({
     () => mergeTurnRailItems(turnNavigationItems, turnOutline),
     [turnNavigationItems, turnOutline],
   )
-  const inbox = useProjection('inbox') as unknown as InboxState | undefined
+  const inbox = useProjection('inbox') as InboxState | undefined
   // Workspace root off the session list row: path summaries display relative to it.
   const cwd = useSessions(s => s.byId[sessionId]?.cwd)
   const fileImages = useMemo(() => ({
+    fileDrag,
     resolve: (path: string) => fileMediaUrl(document.baseURI, resolveWorkspacePath(cwd, path)),
+    resourceAddress: (path: string) => sessionFileAddress(sessionId, resolveWorkspacePath(cwd, path)),
     labels: {
       open: t('image.open'), loading: t('image.loading'), failed: t('image.failed'),
       dialog: t('image.dialog'), close: t('image.close'),
     },
-  }), [cwd, t])
+  }), [cwd, t, fileDrag, sessionId])
+  const codeLabels = useMemo(() => markdownLabels(t).code, [t])
+  // Every fence in the flow dispatches by language; the content is the plain
+  // code block, so a language without a layer renders as code without diff rows.
+  const renderCode = useCallback((fence: MarkdownDelegateFenceInfo) => renderSlot('conversation.chat.markdown.fence', fence, {
+    entryKey: fence.lang,
+    children: (
+      <FenceCodeBlock lang={fence.lang} code={fence.code} streaming={fence.streaming} labels={codeLabels} diff={false} />
+    ),
+  }), [renderSlot, codeLabels])
   const running = useSession(s => s.running)
+  // Fold transitions run while a Turn is live, while an input is pending, and briefly after settling.
+  const [motionTail, setMotionTail] = useState(false)
+  useEffect(() => {
+    if (!deferCompletedTurns) {
+      setMotionTail(false)
+      return
+    }
+    if (running) {
+      setMotionTail(true)
+      return
+    }
+    const timer = setTimeout(() => { setMotionTail(false) }, MOTION_TAIL_MS)
+    return () => { clearTimeout(timer) }
+  }, [running, deferCompletedTurns])
   const openState = useSession(s => s.openState)
   const openError = useSession(s => s.openError)
   const hasMore = useSession(s => s.hasMore)
   const loadingOlder = useSession(s => s.loadingOlder)
+  const historyLoadStatus = useSession(s => s.historyLoadStatus)
+  const historyWasPartial = useSession(s => s.historyWasPartial)
   const [fileOpenError, setFileOpenError] = useState<{ path: string; message: string } | null>(null)
   const [fileOpenBusy, setFileOpenBusy] = useState(false)
   // Close/retry must ignore a settlement that started before the latest
@@ -207,10 +203,8 @@ export function ChatView({
     })
     return [...pending, ...local.values()]
   }, [inboxSteering, pendingSubmissions, visibleSubmissions])
-  const renderMessageImages = useCallback<RenderMessageImages>(
-    owner => renderSlot('conversation.message.images', { ...owner, loadImage }),
-    [loadImage, renderSlot],
-  )
+  const deferCollapse = deferCompletedTurns
+    && !pendingInputs.some(item => 'requestId' in item && item.placement === 'transcript')
 
   const firstKey = order[0]
   const firstSeq = firstKey === undefined ? null : nodeStore.get(firstKey)?.anchorSeq ?? null
@@ -219,13 +213,20 @@ export function ChatView({
   const steeringId = latestSteering?.source.kind === 'user' && 'rpcId' in latestSteering.source
     ? latestSteering.source.rpcId : latestSteering?.id ?? null
   const scroll = useChatScroll({
-    ready: openState === 'open',
-    order, firstSeq, lastKey, running, loadingOlder, hasMore, chatScroll, loadOlder, loadThrough,
+    isOpen: openState === 'open',
+    order, firstSeq, lastKey, running, loadingOlder, historyLoadStatus, hasMore, chatScroll,
+    loadOlder, consumeOlder, loadThrough, deferCompletedTurns,
     lastIsUser: lastKey !== null && nodeStore.get(lastKey)?.kind === 'user',
     steeringId,
     submissionId: visibleSubmissions.at(-1)?.requestId ?? null,
+    submissionSteers: visibleSubmissions.at(-1)?.placement === 'steering',
     loadedTurns: turnNavigationItems,
+    transcriptView,
   })
+  const interactionSurfaceRef = useRef<HTMLDivElement>(null)
+  const interactionIds = useInteractionIds(ids => ids)
+  const textInteraction = useTextInteraction(scroll.columnRef, interactionSurfaceRef, dispatchInteraction, interactionIds)
+  const flowContext = useMemo<ChatFlowHookContext>(() => ({ motion: scroll.motion }), [scroll.motion])
 
   return (
     <div className={css.frame}>
@@ -240,7 +241,9 @@ export function ChatView({
       )}
       <div className={css.root} data-chat-following-tail={scroll.followingTail ? '' : undefined}>
         <div ref={scroll.listRef} className={css.scroll}>
-          <div ref={scroll.columnRef} className={css.column} data-chat-flow="">
+          <div ref={scroll.columnRef} className={css.column} data-chat-flow=""
+            data-chat-motion={deferCompletedTurns && scroll.initialized
+              && (running || motionTail || pendingInputs.length > 0) ? '' : undefined}>
             {openState === 'loading' && <div className={css.hint}>{t('chat.loadingHistory')}</div>}
             {openState === 'error' && openError !== null && (
               <div className={css.openError}>
@@ -248,42 +251,52 @@ export function ChatView({
                 <Button variant="outline" size="sm" onClick={retryOpen}>{t('chat.retryHistory')}</Button>
               </div>
             )}
-            {hasMore && (
-              <div className={css.older}>
-                <button type="button" disabled={loadingOlder} onClick={scroll.loadEarlier}>
-                  {loadingOlder ? t('loading') : t('chat.loadOlder')}
+            {(hasMore || historyWasPartial) && (
+              <div className={css.older} ref={scroll.historyEdgeRef} data-chat-history={historyLoadStatus}>
+                <button type="button" disabled={!hasMore}
+                  onClick={scroll.loadEarlier}>
+                  {([
+                    ['more', t('chat.loadOlder')],
+                    ['loading', t('chat.loadingOlder')],
+                    ['processing', t('chat.processingOlder')],
+                    ['error', t('chat.retryOlder')],
+                    ['start', t('chat.historyStart')],
+                  ] as const).map(([state, label]) => {
+                    const current = !hasMore ? 'start' : loadingOlder ? 'loading'
+                      : historyLoadStatus === 'error' ? 'error'
+                        : scroll.historyInputHeld ? 'more'
+                          : scroll.historyProcessing ? 'processing' : 'more'
+                    return <span key={state} aria-hidden={state !== current}
+                      className={state === current ? undefined : css.historyHidden}>{label}</span>
+                  })}
                 </button>
               </div>
             )}
-            <MarkdownDelegateProvider openExternalLink={openExternalLink} openFile={requestOpenFile} fileImages={fileImages}>
-              <ChatNodeList
-                entries={entries}
-                pendingInputs={pendingInputs}
-                lastInputTurn={lastInputTurn}
-                nodeStore={nodeStore}
-                useChatGroup={useChatGroup}
-                useChatNode={useChatNode}
-                useChatNodeProcess={useChatNodeProcess}
-                usePresentation={usePresentation}
-                useStore={useStore}
-                actions={actions}
-                cwd={cwd}
-                openFile={requestOpenFile}
-                openSkill={openSkill}
-                inspectCall={inspectCall}
-                forkAt={forkAt}
-                loadImage={loadImage}
-                renderMessageImages={renderMessageImages}
-                fileMentions={fileMentions}
-                renderSlot={renderSlot}
-                t={t}
-              />
+            <MarkdownDelegateProvider
+              getTriggerProps={getMarkdownTriggerProps}
+              openFile={requestOpenFile}
+              openExternalLink={openExternalLink}
+              fileImages={fileImages}
+              renderCode={renderCode}
+            >
+              {renderSlot('conversation.chat.flow', {
+                entries, pendingInputs, lastInputTurn, deferCollapse,
+                cwd, openFile: requestOpenFile, inspectCall, forkAt, loadImage,
+              }, { hookContext: flowContext })}
             </MarkdownDelegateProvider>
-            {running && <RunningStatus startTime={runningStartTime} t={t} />}
+            <div ref={interactionSurfaceRef} className={css.textInteraction} data-text-interaction-surface=""
+              aria-hidden={textInteraction.active === null}>
+              {textInteraction.active !== null && renderSlot('conversation.chat.text-interaction', {
+                trigger: textInteraction.active.trigger, readText: textInteraction.readText,
+                dismiss: textInteraction.dismiss, clearSelection: textInteraction.clearSelection,
+              }, { entryKey: textInteraction.active.id })}
+            </div>
             {/* No pending placeholders: questions (ui-user-questions) and approvals
                 (ApprovalPanel) both take over the composer, so a flow card would
                 double-render the same wait. */}
           </div>
+          {/* Fold room is reclaimed by viewport scroll, content-growth, and display-mode policies. */}
+          <div className={css.turnSpacer} data-chat-turn-spacer aria-hidden="true" />
         </div>
       </div>
       {!scroll.followingTail && (

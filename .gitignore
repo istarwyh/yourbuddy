@@ -39,8 +39,11 @@ python/**/__pycache__/
 .pytest_cache/
 packages/**/__pycache__/
 apps/web/dist/
+apps/cli/docs/
 .artifacts/
 .dsh-build/
+.dsh-report/
+.ui-review/
 .playwright-mcp/
 .orig
 .worktrees/
@@ -55,3 +58,5 @@ native/system/test/bin/
 
 # Local electron build output
 apps/desktop/release/
+# Generated company-signed CUA release record.
+/packages/experimental/cua-macos/cua-helper.json

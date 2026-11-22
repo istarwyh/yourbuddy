@@ -10,34 +10,22 @@
  *
  * The settings section UI itself lives in the browser half (exports["./client"]).
  */
-import { execFile } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import os from "node:os";
+import { AsyncResource } from "node:async_hooks";
+import { writeState } from "./runtime.js";
+import { managementFields, installManagement } from "./management.js";
 import z from "@deepseek-ai/schemastery";
 import { BlockAssembler, createUserMessage } from "@deepseek-ai/dsh-llm";
 
 /** Cordis plugin name. */
 const name = "plugin-marketplace";
 /** Services this plugin needs injected from the host tree (ctx.get requires inject). */
-const inject = ["llm", "agentDefaultModel"];
+const inject = ["settings", "profileContext", "llm", "agentDefaultModel"];
 /** Settings namespace owned by this plugin (Web UI settings section + install channel). */
 const NS = "plugin-marketplace";
 
 /** Runtime schema: the install request + the install state report. */
 const Config = z.object({
-  install: z.object({
-    /** npm package name to install ("" = no pending request). */
-    pkg: z.string().default(""),
-    /** client-set timestamp; host dedups on it. */
-    ts: z.number().default(0),
-  }),
-  installState: z.object({
-    status: z.string().default("idle"), // idle | running | ok | error
-    message: z.string().default(""),
-    pkg: z.string().default(""),
-    ts: z.number().default(0),
-  }),
+  ...managementFields,
   /** AI-explain request (client writes repo/desc/readme, host answers). */
   aiExplain: z.object({
     repo: z.string().default(""),
@@ -54,216 +42,44 @@ const Config = z.object({
   }),
 }).volatile();
 
-/** npm package-name shape (scope/name, no spaces, no path chars). */
-const PKG_NAME = /^@?[a-z0-9][a-z0-9-._]*(?:\/[a-z0-9][a-z0-9-._]*)?$/;
-
-/** Keep the actionable pnpm diagnostic instead of the CLI's generic footer. */
-function installFailureMessage(result) {
-  const output = [result.stdout, result.stderr]
-    .filter(Boolean)
-    .join("\n")
-    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
-  const lines = output.split("\n").map((line) => line.trim()).filter(Boolean);
-  const pnpmError = lines.find((line) => line.includes("ERR_PNPM_"));
-  const registryDetail = lines.find((line) => /(?:not in the npm registry|Not Found - 404)/i.test(line));
-  if (pnpmError) {
-    return [pnpmError, registryDetail]
-      .filter((line, index, values) => line && values.indexOf(line) === index)
-      .join(" ");
-  }
-  const details = lines.filter((line) => !line.startsWith("dsh: pnpm failed in profile directory"));
-  return details.slice(-3).join(" ") || "unknown error";
-}
-
 function apply(ctx, config) {
   const sourceGetter = () => typeof config.get === "function" ? config.get() : config;
-  let lastTs = 0;
+  installManagement(ctx, config, NS);
   let lastExplainTs = 0;
 
-  // ── settings-backed configuration ─────────────────────────────────────────
-  // The browser half edits this namespace; every write fires the onChange
-  // handler below, which is what turns an `install` request into a real
-  // install.
-  // Compat shim: dsh-settings 0.1.2-rc.1 removed the module-level
-  // `installSettingsSection` export (the provider now lives at ctx.settings).
-  // Inline the same logic via ctx.inject(["settings"]) — works on both
-  // 0.1.1 (module export wrapper) and 0.1.2 (ctx.settings) hosts.
-  // DSH 0.1.7 stores live plugin fields in the profile patch. Config is a
-  // volatile proxy, and the settings service emits after a committed edit.
+  // settings/document-updated may fire inside the Host's HMR transaction.
+  // Start consumption on the next task, and cancel scheduled work on unload.
+  let scheduled;
+  let disposed = false;
+  // Capture the plugin's startup context. A timer created by an HMR event
+  // inherits its AsyncLocalStorage transaction even after that transaction
+  // settles; consume requests in this resource's context instead.
+  const consumer = new AsyncResource("plugin-marketplace-requests");
+  function scheduleRequests() {
+    if (disposed || scheduled !== undefined) return;
+    scheduled = setTimeout(() => {
+      scheduled = undefined;
+      consumer.runInAsyncScope(() => {
+        void maybeRunExplain();
+      });
+    }, 0);
+  }
   ctx.on("settings/document-updated", (id) => {
-    if (id !== NS) return;
-    void maybeRunInstall();
-    void maybeRunExplain();
+    if (id === NS) scheduleRequests();
   });
-  queueMicrotask(() => {
-    void maybeRunInstall();
-    void maybeRunExplain();
-  });
+  ctx.effect(() => () => { disposed = true; clearTimeout(scheduled); consumer.emitDestroy(); });
+  scheduleRequests();
 
-  // DSH 0.1.0-rc.7+ exposes registered settings namespaces natively, allowing
-  // the browser client to write install requests without modifying host files.
   /** Resolved current config (settings layer over the entry). */
   function current() {
     return sourceGetter();
   }
 
-  /** Write the install-state report (and clear the consumed request). */
-  async function report(status, message, pkg) {
-    const settings = ctx.get("settings");
-    if (!settings) return;
-    const ts = Date.now();
-    await settings.update(NS, {
-      installState: { status, message, ts, pkg: pkg || "" },
-      install: { pkg: "", ts: 0 },
-    }).catch((error) => {
-      ctx.logger.warn(`[plugin-marketplace] state write failed: ${String(error)}`);
-    });
-  }
-
-  /** Find the active profile name from the process args ("web" default). */
-  function profileName() {
-    const argv = process.argv;
-    const i = argv.indexOf("--profile");
-    if (i >= 0 && argv[i + 1]) return argv[i + 1];
-    return "web";
-  }
-
-  /** The dsh CLI entry used to boot this process (its own bin.js). */
-  function dshBin() {
-    return process.argv[1];
-  }
-
-  /** Read the profile manifest (its `dsh.profile.bundles` list), or null. */
-  function profileManifest(profile) {
-    try {
-      const dshHome = process.env.DSH_HOME || join(os.homedir(), ".dsh");
-      return JSON.parse(readFileSync(join(dshHome, "profiles", profile, "package.json"), "utf8"));
-    } catch {
-      return null;
-    }
-  }
-
-  /** Whether the installed package declares dsh.bundle.patch (auto-mounted via its bundle layer). */
-  function isBundlePackage(pkg, profile) {
-    try {
-      const dshHome = process.env.DSH_HOME || join(os.homedir(), ".dsh");
-      const manifest = JSON.parse(readFileSync(join(dshHome, "profiles", profile, "node_modules", pkg, "package.json"), "utf8"));
-      return typeof manifest?.dsh?.bundle?.patch === "string" && manifest.dsh.bundle.patch.length > 0;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Append a mount row for `pkg` to cordis.patch.yml (idempotent).
-   * Bundle plugins (already in `dsh.profile.bundles`, or whose installed
-   * package declares `dsh.bundle.patch`) are mounted by their own bundle
-   * layer — adding a manual row would create a duplicate loader entry and
-   * abort boot. A STALE manual row left by an earlier non-bundle version is
-   * removed instead, so reinstalling a bundle plugin never breaks boot.
-   */
-  function ensureMounted(pkg, profile) {
-    const dshHome = process.env.DSH_HOME || join(os.homedir(), ".dsh");
-    const patchPath = join(dshHome, "profiles", profile, "cordis.patch.yml");
-    if (!existsSync(patchPath)) return " (patch file not found; mount manually)";
-    const bundles = profileManifest(profile)?.dsh?.profile?.bundles ?? [];
-    if (bundles.includes(pkg) || isBundlePackage(pkg, profile)) {
-      // Bundle layer auto-mounts; remove any stale manual row (pre-bundle).
-      const src = readFileSync(patchPath, "utf8");
-      const cleaned = src.replace(new RegExp(`[ \\t]*- id: [^\\n]*\\n[ \\t]*name: ['"]${pkg.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}['"]\\n?`, "g"), "");
-      if (cleaned !== src) {
-        writeFileSync(patchPath, cleaned, "utf8");
-        return " (removed stale manual mount row; bundle layer auto-mounts)";
-      }
-      return bundles.includes(pkg) ? " (already mounted via dsh.profile.bundles)" : " (bundle plugin: auto-mounted via its own dsh.bundle layer)";
-    }
-    const id = pkg.replace(/^@[^/]+\//, "").replace(/[^a-z0-9-]/g, "-") || pkg;
-    let src = readFileSync(patchPath, "utf8");
-    if (src.includes(`name: '${pkg}'`) || src.includes(`name: "${pkg}"`)) return " (already mounted)";
-    const row = `\n    - id: ${id}\n      name: '${pkg}'`;
-    // A flow-style empty array (`[]`, optionally after comment lines) is a
-    // valid empty patch: replace it with the block-style insert list.
-    // Appending after `[]` would produce two top-level documents in one
-    // stream and crash boot with a YAML parse error.
-    const emptyArray = /^(\s*(?:#[^\n]*\n?)*)\[\s*\]\s*$/.exec(src);
-    if (emptyArray) {
-      writeFileSync(patchPath, `${emptyArray[1]}- insert:${row}\n`, "utf8");
-      return " (mounted in cordis.patch.yml)";
-    }
-    // Insert under the first `- insert:` list; match its indentation (4
-    // spaces is the convention used by dsh profiles).
-    const insertAt = src.search(/^- insert:\s*$/m);
-    if (insertAt >= 0) {
-      src = src.slice(0, insertAt + "- insert:".length) + row + src.slice(insertAt + "- insert:".length);
-    } else {
-      // A non-empty flow-style array cannot be safely extended with string
-      // surgery — refuse rather than corrupt the file.
-      if (/^\s*\[/.test(src)) return " (patch file uses a flow-style array; mount manually)";
-      src += `\n- insert:${row}\n`;
-    }
-    writeFileSync(patchPath, src, "utf8");
-    return " (mounted in cordis.patch.yml)";
-  }
-
-  /** Run the install; resolve {code, stdout, stderr}. */
-  function runInstall(pkg, profile) {
-    const bin = dshBin();
-    const node = process.execPath;
-    return new Promise((resolve) => {
-      execFile(node, [bin, "plugin", "--profile", profile, "add", pkg], {
-        timeout: 5 * 60 * 1000,
-        maxBuffer: 8 * 1024 * 1024,
-        windowsHide: true,
-      }, (error, stdout, stderr) => {
-        resolve({ code: error ? (error.code ?? 1) : 0, stdout, stderr });
-      });
-    });
-  }
-
-  async function maybeRunInstall() {
-    let pkg = "";
-    try {
-      const cfg = current();
-      const req = cfg?.install;
-      if (!req || !req.pkg || req.ts === lastTs || req.ts === 0) return;
-      lastTs = req.ts;
-      pkg = String(req.pkg).trim();
-      if (!PKG_NAME.test(pkg)) {
-        await report("error", `invalid package name: ${pkg}`, pkg);
-        return;
-      }
-      const profile = profileName();
-      ctx.logger.info(`[plugin-marketplace] installing ${pkg} (profile=${profile})…`);
-      await report("running", `installing ${pkg}…`, pkg);
-      const result = await runInstall(pkg, profile);
-      if (result.code !== 0) {
-        const output = [result.stdout, result.stderr].filter(Boolean).join("\n");
-        const tail = output.includes("ERR_PNPM_IGNORED_BUILDS")
-          ? "dependency build scripts were blocked by pnpm; the plugin author must make native build dependencies opt-in"
-          : installFailureMessage(result);
-        ctx.logger.warn(`[plugin-marketplace] install failed (${result.code}): ${tail}`);
-        await report("error", `install failed: ${tail || "unknown error"}`, pkg);
-        return;
-      }
-      const mountNote = ensureMounted(pkg, profile);
-      ctx.logger.info(`[plugin-marketplace] ${pkg} installed${mountNote}`);
-      await report("ok", `${pkg} installed${mountNote}. Restart dsh web to load it.`, pkg);
-    } catch (error) {
-      ctx.logger.warn(`[plugin-marketplace] install flow failed: ${String(error)}`);
-      await report("error", String(error instanceof Error ? error.message : error), pkg);
-    }
-  }
-
   /** Write the AI-explain result report (and clear the consumed request). */
   async function reportExplain(status, text, repo) {
-    const settings = ctx.get("settings");
-    if (!settings) return;
-    const ts = Date.now();
-    await settings.update(NS, {
-      aiExplainResult: { status, text, repo: repo || "", ts },
+    await writeState(ctx.get("settings"), NS, {
+      aiExplainResult: { status, text, repo: repo || "", ts: Date.now() },
       aiExplain: { repo: "", desc: "", readme: "", ts: 0 },
-    }).catch((error) => {
-      ctx.logger.warn(`[plugin-marketplace] explain state write failed: ${String(error)}`);
     });
   }
 
@@ -325,9 +141,10 @@ function apply(ctx, config) {
       await reportExplain("ok", text, repo);
     } catch (error) {
       ctx.logger.warn(`[plugin-marketplace] explain flow failed: ${String(error)}`);
-      await reportExplain("error", String(error instanceof Error ? error.message : error), repo);
+      await reportExplain("error", String(error instanceof Error ? error.message : error), repo)
+        .catch((writeError) => ctx.logger.warn(`[plugin-marketplace] explain error state write failed: ${String(writeError)}`));
     }
   }
 }
 
-export { Config, apply, inject, installFailureMessage, name };
+export { Config, apply, inject, name };

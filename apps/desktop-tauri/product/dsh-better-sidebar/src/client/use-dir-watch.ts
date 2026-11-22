@@ -7,13 +7,24 @@
  * tree per-directory watching; this plugin owns its tree (it took the `files`
  * kind over), so it carries its own.
  *
- * One socket per session, open for as long as the tree is mounted. The client
- * announces the folders it has expanded and the host watches exactly those;
- * every notice names a directory whose listing is stale, and the tree drops
- * that one cached level and re-lists it. Folders the reader collapsed are
- * un-watched, so a long session does not accumulate handles.
+ * One socket per session, open for as long as the tree is mounted AND visible.
+ * The client announces the folders it has expanded and the host watches
+ * exactly those; every notice names a directory whose listing is stale, and
+ * the tree drops that one cached level and re-lists it. Folders the reader
+ * collapsed are un-watched, so a long session does not accumulate handles.
+ *
+ * The host keeps every visited tab body mounted, so an un-gated watcher would
+ * keep one socket (and its own set of up to 64 `fs.watch` handles on the host)
+ * open per tree the reader ever opened, re-listing parked trees for nobody.
+ * A parked tree (`visible: false`) therefore closes its socket outright — the
+ * host releases that connection's handles when it goes — rather than sending
+ * `unwatch` per path, and a tree with nothing to watch (no session, no root)
+ * never opens one. Coming back reconnects and force-refreshes every watched
+ * directory once, because whatever changed while it was parked was noticed by
+ * nobody.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { hostWebSocketUrl } from './host-route-url.ts'
 
 /** One server frame: a stale directory, a watch verdict, or a refusal. */
 interface FsWatchFrame {
@@ -30,10 +41,20 @@ export interface DirectoryWatchOptions {
   /** Expanded directories below the root, in the host's absolute path form. */
   dirs: readonly string[]
   /**
-   * A directory whose listing is stale.
-   * @param dir - absolute directory path, exactly the form the tree keys levels by.
+   * Whether the owning tab is on screen. Defaults to true; a parked tree
+   * closes its socket (releasing the host's watchers) and re-lists the
+   * watched directories once when it comes back.
    */
-  onStale: (dir: string) => void
+  visible?: boolean
+  /**
+   * Directories whose listings are stale.
+   *
+   * A watch notice names one directory. The parked→visible re-arm names the
+   * WHOLE watched set at once: the caller re-lists it in one batch request
+   * instead of firing one request per directory.
+   * @param dirs - absolute directory paths, exactly the form the tree keys levels by.
+   */
+  onStale: (dirs: readonly string[]) => void
 }
 
 /** How long to wait before re-opening a dropped socket; failures back off to the cap. */
@@ -42,23 +63,37 @@ const RETRY_MAX_MS = 15_000
 
 /**
  * Keep the file tree's expanded folders watched for the component's lifetime.
- * @param options - session, root, expanded directories, and the staleness callback.
+ * @param options - session, root, expanded directories, visibility, and the staleness callback.
  */
 export function useDirectoryWatch(options: DirectoryWatchOptions): void {
-  const { sessionId, root, dirs, onStale } = options
+  const { sessionId, root, dirs, visible = true, onStale } = options
   // The expanded set is a fresh array on every render, so neither the socket
-  // effect nor the staleness callback may depend on their identity.
-  const wantedRef = useRef<string[]>([])
-  wantedRef.current = root === undefined ? [...dirs] : [root, ...dirs]
+  // effect nor the staleness callback may depend on their identity. The
+  // CONTENT key (NUL-joined paths — no path can contain one) is what the
+  // arrays are derived from, so a re-render with the same expanded set
+  // rebuilds neither the wanted list nor the effect dependency.
+  const dirsKey = dirs.join('\u0000')
+  const wanted = useMemo(() => {
+    const listed = dirsKey === '' ? [] : dirsKey.split('\u0000')
+    return root === undefined ? listed : [root, ...listed]
+  }, [root, dirsKey])
+  const wantedRef = useRef(wanted)
+  wantedRef.current = wanted
   const staleRef = useRef(onStale)
   staleRef.current = onStale
   /** Set by the socket effect; reconciles the host's watch set with the tree's. */
   const reconcileRef = useRef<() => void>(() => {})
   // One string per expanded-set change: a stable dependency for the effect below.
-  const wantedKey = wantedRef.current.join('\u0000')
+  const wantedKey = useMemo(() => wanted.join('\u0000'), [wanted])
+  /**
+   * Whether a socket should exist at all: a parked tree and a tree with an
+   * empty watch set (no session, or no root and nothing expanded) hold none.
+   */
+  const armed = visible && sessionId !== undefined && wanted.length > 0
 
   useEffect(() => {
-    if (sessionId === undefined) return
+    if (!armed || sessionId === undefined) return
+    const session = sessionId
     let socket: WebSocket | null = null
     let retry: number | undefined
     let closed = false
@@ -88,9 +123,8 @@ export function useDirectoryWatch(options: DirectoryWatchOptions): void {
 
     const connect = (): void => {
       if (closed) return
-      const url = new URL('/sidebar/ws/fs-watch', location.origin)
-      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-      url.search = new URLSearchParams({ sessionId }).toString()
+      const url = hostWebSocketUrl('sidebar/ws/fs-watch')
+      url.search = new URLSearchParams({ sessionId: session }).toString()
       socket = new WebSocket(url.toString())
       socket.onopen = () => {
         failures = 0
@@ -98,6 +132,9 @@ export function useDirectoryWatch(options: DirectoryWatchOptions): void {
         reconcile()
       }
       socket.onmessage = (event) => {
+        // A frame that arrives after the teardown (or after the socket was
+        // closed) must not re-list: the tree in question is parked or gone.
+        if (closed) return
         if (typeof event.data !== 'string') return
         let frame: FsWatchFrame
         try {
@@ -113,7 +150,7 @@ export function useDirectoryWatch(options: DirectoryWatchOptions): void {
           watching.add(frame.dir)
           return
         }
-        if (frame.ok === undefined) staleRef.current(frame.dir)
+        if (frame.ok === undefined) staleRef.current([frame.dir])
       }
       socket.onclose = () => {
         if (closed) return
@@ -129,7 +166,7 @@ export function useDirectoryWatch(options: DirectoryWatchOptions): void {
       if (retry !== undefined) window.clearTimeout(retry)
       socket?.close()
     }
-  }, [sessionId])
+  }, [sessionId, armed])
 
   // Reconciling on its own effect keeps an expand/collapse from tearing the
   // socket down and re-opening it.
@@ -137,4 +174,19 @@ export function useDirectoryWatch(options: DirectoryWatchOptions): void {
     void wantedKey
     reconcileRef.current()
   }, [wantedKey])
+
+  /**
+   * Re-armed after being parked: the socket is brand new (the old one's
+   * notices are gone with it), so nothing the host saw while the tree was
+   * hidden was delivered. Re-list every watched directory once instead of
+   * showing a listing that may be minutes old — as ONE batch (the caller
+   * re-lists the set in a single `fs.trees` request), not one per directory.
+   */
+  const wasArmedRef = useRef(armed)
+  useEffect(() => {
+    const previous = wasArmedRef.current
+    wasArmedRef.current = armed
+    if (!armed || previous) return
+    if (wantedRef.current.length > 0) staleRef.current(wantedRef.current)
+  }, [armed])
 }

@@ -145,6 +145,22 @@ declare module '@deepseek-ai/cordis' {
      * @mode parallel
      */
     'workspace/session-stop'(request: SessionActivityRequest): Promise<void> | void
+    /**
+     * Admit optional follow-up work after durable archival and any stop requests.
+     * Dispatched inside the registry's write queue: a listener registers its work
+     * and returns, and runs the work and any unbounded I/O afterwards. Listener
+     * failures are logged without undoing archival. Listeners own and drain their background work.
+     * @param request - newly archived Session; repeated archive requests do not dispatch.
+     * @mode parallel
+     */
+    'workspace/session-archived'(request: SessionActivityRequest): Promise<void> | void
+    /**
+     * Cancel or settle archive follow-up work before making a Session available again.
+     * A rejection retains the archived state.
+     * @param request - Session about to leave the archive set.
+     * @mode parallel
+     */
+    'workspace/session-unarchiving'(request: SessionActivityRequest): Promise<void> | void
   }
 }
 
@@ -176,15 +192,17 @@ export class WorkspaceRegistry extends Service {
   private readonly entities = new Map<WorkspaceId, WorkspaceEntity>()
   private readonly headers = new Map<SessionId, SessionHeader>()
   private readonly sessionPaths = new Map<SessionId, string>()
+  private readonly missingSessionPaths = new Set<SessionId>()
   private readonly invalidSessionPaths = new Map<SessionId, string>()
   private operationTail: Promise<void> = Promise.resolve()
 
   private readonly host: WorkspaceEntityHost = {
     table: () => this.requireTable(),
-    sessionPath: id => this.sessionPaths.get(id),
+    candidateMatches: (id, path) => this.sessionPaths.get(id) === path || this.missingSessionPaths.has(id),
     readSessionHeader: id => this.readSessionHeader(id),
     rememberSessionPath: (id, path) => {
       this.sessionPaths.set(id, path)
+      this.missingSessionPaths.delete(id)
       this.invalidSessionPaths.delete(id)
     },
   }
@@ -358,7 +376,7 @@ export class WorkspaceRegistry extends Service {
    * resolves without writing, asking, or stopping.
    * @param sessionId - The session to archive.
    * @param options - Whether running work is stopped instead of refusing.
-   * @returns resolution after durability and, with `stopActivity`, after every stop request was issued.
+   * @returns resolution after durability, any stop requests, and follow-up admission.
    */
   archiveSession(sessionId: SessionId, options: ArchiveSessionOptions = {}): Promise<void> {
     return this.enqueueOperation(async () => {
@@ -381,6 +399,11 @@ export class WorkspaceRegistry extends Service {
         pinnedSessionIds: state.pinnedSessionIds.filter(id => id !== sessionId),
       })
       if (options.stopActivity === true) await this.stopSessionActivity(sessionId)
+      try {
+        await this.ctx.parallel('workspace/session-archived', { sessionId })
+      } catch (error) {
+        this.ctx.logger.warn('Session archived, but archive follow-up admission failed: %s', error)
+      }
     })
   }
 
@@ -400,6 +423,7 @@ export class WorkspaceRegistry extends Service {
       // check-then-write pair cannot interleave with a concurrent archive.
       const state = this.requireState()
       if (!state.archivedSessionIds.includes(sessionId)) return
+      await this.ctx.parallel('workspace/session-unarchiving', { sessionId })
       await this.setState({
         ...state,
         archivedSessionIds: state.archivedSessionIds.filter(id => id !== sessionId),
@@ -793,6 +817,7 @@ export class WorkspaceRegistry extends Service {
   private async replaceHeaderIndex(headers: readonly SessionHeader[]): Promise<void> {
     this.headers.clear()
     this.sessionPaths.clear()
+    this.missingSessionPaths.clear()
     this.invalidSessionPaths.clear()
     await this.indexHeaders(headers)
   }
@@ -804,6 +829,7 @@ export class WorkspaceRegistry extends Service {
   private async indexHeader(header: SessionHeader): Promise<void> {
     this.headers.set(header.id, header)
     this.sessionPaths.delete(header.id)
+    this.missingSessionPaths.delete(header.id)
     if (header.cwd === undefined) {
       this.invalidSessionPaths.set(header.id, 'header has no cwd')
       return
@@ -816,7 +842,11 @@ export class WorkspaceRegistry extends Service {
       }
       this.sessionPaths.set(header.id, path)
       this.invalidSessionPaths.delete(header.id)
-    } catch {
+    } catch (error) {
+      if (fullyQualifiedWorkspacePath(header.cwd)
+        && error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+        this.missingSessionPaths.add(header.id)
+      }
       this.invalidSessionPaths.set(header.id, `cwd '${header.cwd}' does not resolve`)
     }
   }
@@ -837,8 +867,8 @@ export class WorkspaceRegistry extends Service {
     for (const entity of this.entities.values()) {
       const record = this.requireTable().get(entity.id) as WorkspaceRecord
       for (const sessionId of record.sessionIds) {
+        if (this.host.candidateMatches(sessionId, record.path)) continue
         const path = this.sessionPaths.get(sessionId)
-        if (path === record.path) continue
         const reason = this.invalidSessionPaths.get(sessionId)
           ?? (this.headers.has(sessionId)
             ? `canonical cwd '${path}' differs from workspace path '${record.path}'`

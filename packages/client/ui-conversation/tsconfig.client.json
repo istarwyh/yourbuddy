@@ -101,9 +101,13 @@
     },
     {
       "path": "../shortcuts/tsconfig.client.json"
+    },
+    {
+      "path": "../ui-context-menu"
     }
   ],
   "exclude": [
-    "src/index.ts"
+    "src/index.ts",
+    "src/host"
   ]
 }

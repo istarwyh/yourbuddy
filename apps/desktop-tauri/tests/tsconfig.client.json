@@ -1,0 +1,16 @@
+{
+  "extends": "../../../tsconfig.base.client.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "noEmit": true,
+    "rewriteRelativeImportExtensions": false,
+    "exactOptionalPropertyTypes": false,
+    "types": ["node"]
+  },
+  "references": [
+    { "path": "../../../packages/test-support/client-runtime" },
+    { "path": "../../../packages/client/ui-conversation/tsconfig.client.json" }
+  ],
+  "include": ["better-sidebar-conversation-draft.client.spec.ts"]
+}

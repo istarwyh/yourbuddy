@@ -21,6 +21,39 @@ export interface SidebarPrefs {
      */
     autoOpenJobs: boolean;
     /**
+     * The Tasks page's default presentation: the workflow graph canvas or the
+     * classic indentation tree (the in-page toggle still flips it ad hoc).
+     */
+    tasksViewMode: 'graph' | 'tree';
+    /** Automatically fold settled leaf tasks (agents without child agents). */
+    tasksAutoFoldSettled: boolean;
+    /** Aggregate a fully settled branch independently of the settled-leaf switch. */
+    tasksAutoFoldBranches: boolean;
+    /** Aggregate idle teammates when at least three are idle. */
+    tasksAutoFoldIdle: boolean;
+    /**
+     * Collapse the jobs drawer when the agent count reaches eight; manual
+     * toggling remains available.
+     */
+    jobsAutoCollapse: boolean;
+    /**
+     * MOBILE ADAPTATION (narrow viewports, `isNarrowWidth`): while the viewport
+     * is narrow, do not auto-activate the Tasks page for background activity —
+     * it suppresses BOTH triggers (`autoOpenSubagent` and `autoOpenJobs`) at
+     * once, because on a phone the takeover costs the whole screen. The two
+     * individual switches keep their own meaning on wide viewports.
+     */
+    mobileNoAutoOpen: boolean;
+    /**
+     * MOBILE ADAPTATION (narrow viewports): open the Tasks page in the classic
+     * TREE by default instead of the workflow graph — a narrow screen cannot
+     * show a layered graph legibly, while the tree's indentation still reads.
+     * It only picks the DEFAULT: the in-page view toggle still flips this
+     * session's page ad hoc, and `tasksViewMode` keeps deciding on wide
+     * viewports.
+     */
+    mobileDefaultTree: boolean;
+    /**
      * Whether the model-facing `sidebar_open` tool is injected into the
      * model's toolset — one tool that lets the model actively open a local
      * file, a local folder (as a tree rooted there), or an HTTP(S) page in
@@ -38,52 +71,33 @@ export interface SidebarPrefs {
      */
     editorExplorer: boolean;
     /**
-     * Legacy stored preference retained for profile compatibility. Filesystem
-     * routes ignore it and always permit absolute host paths.
-     * @deprecated The workspace path check is not available.
+     * Whether the `code` editor paints its uncommitted changes the way VS Code
+     * does (issue #212): the line number takes the tone of its change, a thin
+     * colored bar sits at the left of the numbers, and hovering a line shows
+     * that line's blame as a plain-text tooltip. On by default — there is ONE
+     * switch for the whole feature (no per-part toggles: no author / hash /
+     * date / summary switches, no end-of-line widget).
      */
-    workspaceFence: boolean;
+    editorGitGutter: boolean;
     /**
-     * Title-bar / shell compatibility scheme (the "位置兼容模式" setting):
-     * - `auto` (default): CONSERVATIVE — only the standard Window Controls
-     *   Overlay API (present in frameless Chromium shells that draw the
-     *   native caption buttons over web content) contributes real geometry;
-     *   without it nothing is modified, so plain-browser (web) behavior is
-     *   untouched.
-     * - `web`: EXPLICIT "DSH official web" — never adapt, not even WCO
-     *   geometry (the user declares they run the plain web UI).
-     * - `preset`: apply the built-in shell preset named by
-     *   `titleBarPresetId` (data-driven, opt-in — see shell-presets.ts).
-     * - `custom`: apply the free-form `customCss` (and the legacy
-     *   `titleBarStripPx` strip).
+     * VS Code `files.exclude`-style glob patterns (the editor card's gear
+     * popup manages the list): matched entries are REMOVED from the file tree
+     * and the name search entirely — dot-prefixed rows otherwise render
+     * dimmed as usual. Supported shapes: a bare name
+     * (`Thumbs.db`) at any depth, a cwd-anchored path (`build/out`), a
+     * doublestar head for any depth (doublestar + slash + name), and `*` /
+     * `?` wildcards.
+     * Excluded entries never block the breadcrumb fold either (the host probe
+     * and the listing share the one compiled matcher).
      */
-    titleBarScheme: TitleBarScheme;
-    /**
-     * The built-in shell preset id applied while `titleBarScheme` is
-     * `preset` ('' = no preset — nothing extra is applied).
-     */
-    titleBarPresetId: string;
+    explorerExclude: string[];
     /**
      * Free-form CSS injected into the page (last in the cascade, so it can
      * override the plugin's styles; use `!important` to override JS-written
-     * inline CSS variables). Applied while `titleBarScheme` is `custom`.
+     * inline CSS variables). The escape hatch for anything the settings rows
+     * do not cover — applied whenever it is non-empty.
      */
     customCss: string;
-    /**
-     * LEGACY (kept for read-migration and downgrade mirroring only): position
-     * compatibility mode flag. The UI writes `titleBarScheme` instead; a
-     * stored `true` without a scheme migrates to the `custom` scheme (with
-     * `titleBarStripPx` preserved).
-     */
-    titleBarCompat: boolean;
-    /**
-     * LEGACY (kept for read-migration and downgrade mirroring only): the
-     * reserved top strip height in px used by the `custom` scheme (0–120,
-     * default 40). Drives the `--dsh-title-bar-strip` CSS variable: the
-     * toggle cluster drops `strip + 3px` and the right panel's content
-     * starts `strip` px below its top edge.
-     */
-    titleBarStripPx: number;
     /**
      * Whether the HTML previewer drops its sandboxed iframe. Sandbox ON (the
      * default) renders previewed HTML in an opaque-origin iframe that cannot
@@ -126,15 +140,59 @@ export interface SidebarPrefs {
      * numbers / booleans; custom panels are responsible for their own).
      */
     pluginSettings: Record<string, Record<string, unknown>>;
+    /**
+     * Maximum number of rows the native start page draws before the overflow
+     * collapses into its "More" card. The wide layout puts two cards on a row
+     * and a narrow one puts one; the minimum is a single row and there is no
+     * upper bound (a huge value simply never overflows).
+     */
+    guideRows: number;
+    /**
+     * Explicit start-page order, as `providerId::entryId` keys (the host guide
+     * card identity). Keys absent from this list follow in registration order;
+     * keys that no longer exist are ignored. Empty means "registry order".
+     */
+    guideOrder: string[];
+    /**
+     * Start-page visibility overrides keyed by `providerId::entryId`. An absent
+     * key means VISIBLE, so old documents need no migration and a newly
+     * registered entry shows by default. `false` hides the card from the start
+     * page only: the tab type stays registered, and shortcuts, resource opens
+     * and already-open tabs are untouched.
+     */
+    guideHidden: Record<string, boolean>;
+    /**
+     * Where the start-page grid sits when it is shorter than the pane: vertically
+     * centered (default) or pinned to the top. When the grid is taller than the
+     * pane it always scrolls from the top.
+     */
+    guideAlign: 'center' | 'top';
+    /**
+     * Whether the plugin replaces the host's shipped guide body. On by default;
+     * off restores the host's own start page while every other plugin feature
+     * stays exactly as it is.
+     */
+    guideTakeover: boolean;
 }
-/** Range contract of {@link SidebarPrefs.titleBarStripPx}. */
-export declare const TITLE_BAR_STRIP_MIN = 0;
-export declare const TITLE_BAR_STRIP_MAX = 120;
-export declare const TITLE_BAR_STRIP_DEFAULT = 40;
-/** The title-bar / shell compatibility schemes (see {@link SidebarPrefs.titleBarScheme}). */
-export declare const TITLE_BAR_SCHEMES: readonly ["auto", "web", "preset", "custom"];
-export type TitleBarScheme = typeof TITLE_BAR_SCHEMES[number];
+/** The side-chat tab descriptor id; also the key of its settings blob. */
+export declare const SIDECHAT_PREFS_ID = "sidechat";
+/** The plugin-owned setting key holding the composer's submit gesture. */
+export declare const SIDECHAT_SUBMIT_KEY_SETTING = "submitKey";
+/** Which gesture submits a side-chat message. */
+export type SidechatSubmitKey = 'enter' | 'mod-enter';
+/** The submit key every document that never chose one gets (host semantics). */
+export declare const SIDECHAT_SUBMIT_KEY_DEFAULT: SidechatSubmitKey;
+/** Every accepted submit-key mode (the settings dropdown's value set). */
+export declare const SIDECHAT_SUBMIT_KEYS: readonly SidechatSubmitKey[];
+/**
+ * Validate one stored submit-key value. Anything that is not a known mode (an
+ * absent value, a legacy string, a hand-edited document) falls back to the
+ * default, so a bad preference can never wedge the composer.
+ * @param value - the raw stored value.
+ * @returns a known submit-key mode.
+ */
+export declare function parseSidechatSubmitKey(value: unknown): SidechatSubmitKey;
+/** The stock exclude list (VS Code ships a similar files.exclude default). */
+export declare const EXPLORER_EXCLUDE_DEFAULTS: readonly string[];
 /** Fallback prefs used whenever the settings document is unreachable or malformed. */
 export declare const SIDEBAR_PREFS_DEFAULTS: SidebarPrefs;
-/** Clamp one title-bar strip height into the contract range (shared by schema and client reads). */
-export declare function clampTitleBarStrip(value: number): number;

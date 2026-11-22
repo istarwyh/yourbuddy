@@ -1,6 +1,32 @@
+/**
+ * Side Chat routes of the /sidebar JSON API ('sidechat.start' /
+ * 'sidechat.prompt' / 'sidechat.cancel' / 'sidechat.dispose' /
+ * 'sidechat.info' / 'sidechat.events').
+ *
+ * A side thread is a child session the plugin creates ITSELF with a custom
+ * seed — the parent's full event log up to the click moment, honestly closed
+ * at an in-progress turn (see sidechat-core.ts). The child is marked
+ * `origin: 'subagent'` so the main session list hides it, and EVERY
+ * operation goes through these routes because the generic session RPCs are
+ * fenced away from subagent-origin identities (the api-remotes
+ * agent-lookup ownership fence). No DSH source is touched:
+ *
+ * - creation uses the public AgentRegistry.create seam (the same one
+ *   api-proxy's session.fork and the subagent fork provider use), with the
+ *   parent's preset composition and provider/model selection so the child's
+ *   first request shares the parent's token prefix (provider-side prefix
+ *   cache reuse);
+ * - the first prompt (boundary + question) and every follow-up are admitted
+ *   with the stock `agent.followup`;
+ * - a cold thread (DSH restart, or a closed thread) is resumed with
+ *   AgentRegistry.resume, composing the preset the child recorded.
+ */
+import type { StoredImageAttachment } from '@deepseek-ai/dsh-attachment';
+import { ReasoningEffortId } from '@deepseek-ai/dsh-llm';
 import type { Context } from './context-types.ts';
-import { SIDE_INJECTION_SOURCE_KIND, type SidechatLiveEvent, type SidechatLogEvent, type SidechatThreadInfo } from './sidechat-core.ts';
+import { SIDE_INJECTION_SOURCE_KIND, type SidechatLiveEvent, type SidechatLogEvent, type SidechatModelCatalog, type SidechatModelSelection, type SidechatPendingInput, type SidechatThreadInfo, type SidechatForkPoint } from './sidechat-core.ts';
 import type { AssistantLiveBuffer } from './assistant-live.ts';
+import { type ResolvedSidebarConfig } from './config.ts';
 /**
  * The plugin's producer-owned message source kind. Message sources are a
  * merge-extensible sum type — DSH 0.1.7 has no shared catch-all `plugin`
@@ -18,7 +44,25 @@ declare module '@deepseek-ai/dsh-llm' {
         };
     }
 }
-/** The six Side Chat routes of the sidebar API (wire method names). */
+/**
+ * The session-local model selection event. Its owning package
+ * (`dsh-api-session-controller`) is not a plugin dependency, but the event is
+ * part of the durable session format the plugin must write to change a
+ * thread's model the way the host's own composer does — so the key is
+ * declared here with the exact shape that package's own projection folds
+ * (provider, model, optional branded effort).
+ */
+declare module '@deepseek-ai/dsh-session' {
+    interface SessionEventMap {
+        /** Session-local model selection for the next request. */
+        'model/selection': {
+            provider: string;
+            model: string;
+            reasoningEffort?: ReasoningEffortId;
+        };
+    }
+}
+/** The Side Chat routes of the sidebar API (wire method names). */
 export interface SidechatRoutes {
     /** Create a side thread child seeded with the parent's log up to now.
      *  `question` is optional: empty creates an EMPTY thread (Codex-style
@@ -30,6 +74,7 @@ export interface SidechatRoutes {
     /** Deliver one follow-up message to a thread (live, or cold-resumed). */
     'sidechat.prompt'(payload: unknown): Promise<{
         accepted: true;
+        messageId: string;
     }>;
     /** Abort the thread's running turn (queued work is preserved). */
     'sidechat.cancel'(payload: unknown): Promise<{
@@ -39,16 +84,40 @@ export interface SidechatRoutes {
     'sidechat.dispose'(payload: unknown): Promise<{
         accepted: true;
     }>;
-    /** Live state + agent identity for the thread header. */
+    /** Live state + the thread's EFFECTIVE model route and preset. */
     'sidechat.info'(payload: unknown): Promise<SidechatThreadInfo>;
     /** The thread's OWN transcript events, seed-cut host-side (the inherited
      *  parent log never crosses the wire); `afterSeq` narrows the response to
      *  the delta beyond it (poll tail). `live` carries the thread's in-flight
      *  model deltas, which DSH 0.1.5 publishes outside the session log — it is
-     *  the CURRENT attempt's rows on every poll, never a delta. */
+     *  the CURRENT attempt's rows on every poll, never a delta. `pending` is
+     *  the thread's live UNCLAIMED inbox in claim order: accepted input that
+     *  has not reached the log yet, so the transcript can show it instead of
+     *  looking dead until a claim logs it. */
     'sidechat.events'(payload: unknown): Promise<{
         events: SidechatLogEvent[];
         live: SidechatLiveEvent[];
+        pending: SidechatPendingInput[];
+        /** The FIRST pull of a seeded thread also says where it forked off the
+         *  parent conversation (the tail the route cut away). Additive. */
+        fork?: SidechatForkPoint;
+    }>;
+    /** Drop one unclaimed inbox message, or the whole queue when `messageId` is
+     *  omitted. A cold thread has nothing live to drop and answers `removed: 0`. */
+    'sidechat.dequeue'(payload: unknown): Promise<{
+        accepted: true;
+        removed: number;
+    }>;
+    /** The host model catalog the composer itself lists (degraded to
+     *  `available: false` when the host exposes no such service). */
+    'sidechat.models'(payload: unknown): Promise<SidechatModelCatalog>;
+    /** Install one model selection on the thread: durably logged as
+     *  `model/selection` (the host's own commit shape) and applied to the next
+     *  request through the agent-scoped selection the host installs for its
+     *  composer. */
+    'sidechat.model'(payload: unknown): Promise<{
+        accepted: true;
+        selection: SidechatModelSelection;
     }>;
 }
 /** Build the Side Chat routes (all optional services degrade to a wire
@@ -57,4 +126,5 @@ export interface SidechatRoutes {
  *  @param ctx - host plugin context.
  *  @param live - the live assistant stream buffer; absent only in tests that
  *    never exercise streaming (then every `live` response is empty). */
-export declare function buildSidechatApi(ctx: Context, live?: AssistantLiveBuffer): SidechatRoutes;
+export declare function buildSidechatApi(ctx: Context, live?: AssistantLiveBuffer, resolved?: ResolvedSidebarConfig, signal?: AbortSignal): SidechatRoutes;
+export declare function readSidechatImage(ctx: Context, childId: string, messageId: string, blockIndex: number): Promise<StoredImageAttachment>;

@@ -6,9 +6,11 @@ import { pinBrowserClock, pinHostClock, WEB_FIXTURE_TIME } from './support.ts'
 it('pins each document wall clock without replacing its timers or monotonic clock', async () => {
   const dispose = vi.fn<() => Promise<void>>().mockResolvedValue(undefined)
   const addInitScript = vi.fn<Page['addInitScript']>().mockResolvedValue({ dispose, [Symbol.asyncDispose]: dispose })
+  const evaluate = vi.fn<Page['evaluate']>().mockResolvedValue(undefined)
   const hostClock = pinHostClock()
   try {
-    await pinBrowserClock({ addInitScript })
+    await pinBrowserClock({ addInitScript, evaluate })
+    expect(evaluate).toHaveBeenCalledWith(...addInitScript.mock.calls[0]!)
     expect(addInitScript).toHaveBeenCalledTimes(1)
     const [script, argument] = addInitScript.mock.calls[0]!
     if (typeof script !== 'function') throw new Error('clock initialization must be a browser function')
@@ -17,16 +19,21 @@ it('pins each document wall clock without replacing its timers or monotonic cloc
       let ticks = initialTicks
       const monotonic = { now: () => ticks }
       const timer = vi.fn()
-      const scope = { performance: monotonic, setTimeout: timer, setInterval: timer, requestAnimationFrame: timer }
+      const scope = {
+        realNow: WEB_FIXTURE_TIME - Number(argument), performance: monotonic,
+        setTimeout: timer, setInterval: timer, requestAnimationFrame: timer,
+      }
       const clock = runInNewContext(`
+        Date.now = () => globalThis.realNow;
         const nativeDate = Date;
         const nativeIntl = Intl;
         ${initialization};
-        ({ now: () => Date.now(), nativeDatePreserved: Date === nativeDate,
+        ({ now: () => Date.now(), constructedNow: () => new Date().getTime(), nativeDatePreserved: Date === nativeDate,
           nativeIntlPreserved: Intl === nativeIntl,
           performance, setTimeout, setInterval, requestAnimationFrame })
       `, scope) as {
         now(): number
+        constructedNow(): number
         nativeDatePreserved: boolean
         nativeIntlPreserved: boolean
         performance: typeof monotonic
@@ -35,9 +42,11 @@ it('pins each document wall clock without replacing its timers or monotonic cloc
         requestAnimationFrame: typeof timer
       }
       expect(clock.now()).toBe(WEB_FIXTURE_TIME)
+      scope.realNow += 37
       ticks += 37.9
       expect(clock.now()).toBe(WEB_FIXTURE_TIME + 37)
-      expect(clock.nativeDatePreserved).toBe(true)
+      expect(clock.constructedNow()).toBe(WEB_FIXTURE_TIME + 37)
+      expect(clock.nativeDatePreserved).toBe(false)
       expect(clock.nativeIntlPreserved).toBe(true)
       expect(clock.performance).toBe(monotonic)
       expect(clock.setTimeout).toBe(timer)

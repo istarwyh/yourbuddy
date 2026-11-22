@@ -1,0 +1,2518 @@
+diff --git a/scripts/yourbuddy-routing.test.mjs b/scripts/yourbuddy-routing.test.mjs
+new file mode 100644
+index 0000000..fff2cca
+--- /dev/null
++++ b/scripts/yourbuddy-routing.test.mjs
+@@ -0,0 +1,65 @@
++/** Source smoke for product routing; run with the repository's tsx/esm hook under Node 26. */
++import assert from 'node:assert/strict'
++import { registerHooks } from 'node:module'
++import { test } from 'node:test'
++
++// UI owners import CSS; this service-only fixture renders no components.
++registerHooks({
++  load(url, context, next) {
++    if (url.endsWith('.css')) return { format: 'module', source: 'export default {}', shortCircuit: true }
++    return next(url, context)
++  },
++})
++const { createSidebarStore } = await import('../src/client/state.ts')
++const { createBetterSidebarService } = await import('../src/client/service.ts')
++
++test('workbench routes documents and explicit native claims without revealing background opens', () => {
++  const storage = new Map()
++  globalThis.localStorage = {
++    getItem: key => storage.get(key) ?? null,
++    setItem: (key, value) => storage.set(key, value),
++    removeItem: key => storage.delete(key),
++  }
++  // Persistence is outside this routing test; do not leave real timers alive.
++  globalThis.window = { setTimeout: () => 0, clearTimeout: () => {} }
++  const store = createSidebarStore()
++  store.setSession('main')
++  const intents = []
++  const documents = []
++  const native = []
++  const service = createBetterSidebarService(store, {
++    preferWorkbench: () => true,
++    onOpenIntent: intent => intents.push(intent),
++    onNativeDocumentOpen: intent => documents.push(intent),
++  })
++  for (const id of ['editor', 'subagent']) service.registerTab({ id, title: id, component: () => null })
++  service.setSurface({
++    openTab: input => native.push(input),
++    openResource: input => native.push(input),
++    fileAddress: (sessionId, _cwd, path) => `${sessionId}:${path}`,
++    close: () => undefined,
++    update: () => false,
++    activate: () => false,
++    has: () => false,
++  })
++  service.openFile({ sessionId: 'main' }, '/tmp/report.pdf', undefined, { intent: 'background', line: 3 })
++  assert.equal(native[0].sessionId, 'main')
++  assert.equal(native[0].revealIfOpened, false)
++  assert.equal(native[0].line, 3)
++  service.openFile({ sessionId: 'main' }, '/tmp/report.pdf')
++  assert.equal(native[1].revealIfOpened, true)
++  service.openFile({ sessionId: 'other' }, '/tmp/report.pdf')
++  assert.equal(native[2].sessionId, 'other')
++  assert.deepEqual(intents, ['background', 'user'])
++  assert.deepEqual(documents, ['background', 'user'])
++  service.openFile({ sessionId: 'main' }, '/tmp/readme.md')
++  assert.equal(native.length, 3)
++  assert.equal(store.tabOpen('main', 'editor:/tmp/readme.md'), true)
++  service.openTab({ type: 'editor', path: '/tmp/a.drawio', target: 'right' }, { sessionId: 'main' })
++  assert.equal(native[3].address, 'main:/tmp/a.drawio')
++  service.openTab({ type: 'subagent', intent: 'background' }, { sessionId: 'other' })
++  assert.equal(store.tabOpen('other', 'subagent'), true)
++  store.setSession(undefined)
++  delete globalThis.window
++  delete globalThis.localStorage
++})
+diff --git a/src/client/EditorHost.tsx b/src/client/EditorHost.tsx
+index fb888d6..67964d2 100644
+--- a/src/client/EditorHost.tsx
++++ b/src/client/EditorHost.tsx
+@@ -36,6 +36,7 @@ import { clearEditorDirty, isEditorDirty, setEditorDirty } from './editor-dirty.
+ import { baseName } from './FileTree.tsx'
+ import { createFrameBatcher } from './frame-batcher.ts'
+ import { openClaimedNativeFile, openSidebarFile } from './sidebar-file.ts'
++import { isNativeDocumentPath } from './native/file-types.ts'
+ import { openWithSshActive, openWithUrl, parseOpenWithConfig, resolveOpenWithTargets } from './open-with.ts'
+ import { fileOpKey, useFileOpStream } from './ops-stream.ts'
+ import { updatePluginSettings } from './plugin-settings.ts'
+@@ -162,6 +163,10 @@ export function EditorHost(props: {
+   revealed: string[]
+   onToggleDir: (path: string) => void
+   onReferenceFile: (path: string, isDir: boolean) => void
++  /** Native occurrence-bound file open actions, absent in the local workbench. */
++  onOpenFile?: (path: string) => void
++  onOpenFileInPlace?: (path: string) => void
++  onOpenFileSide?: (path: string) => void
+ }) {
+   const { ctx, store, scope, tab, expanded, revealed, onToggleDir, onReferenceFile } = props
+   const visible = props.visible !== false
+@@ -350,7 +355,10 @@ export function EditorHost(props: {
+         // backup too, or the next open would offer the discarded bytes back.
+         clearDraftBackup(scope.sessionId, path)
+       }
+-      ctx.get('betterSidebar')?.updateTab(tab.id, { path: absolute, title: baseName(absolute) }, scope.sessionId)
++      if (props.onOpenFileInPlace !== undefined) props.onOpenFileInPlace(absolute)
++      else ctx.get('betterSidebar')?.updateTab(tab.id, { path: absolute, title: baseName(absolute) }, scope.sessionId)
++    } else if (props.onOpenFile !== undefined) {
++      props.onOpenFile(absolute)
+     } else {
+       openSidebarFile(ctx, scope.sessionId, absolute, { cwd: scope.cwd })
+     }
+@@ -358,7 +366,8 @@ export function EditorHost(props: {
+ 
+   /** The context menu's explicit "new tab" escape (per-path dedupe). */
+   const openFileNewTab = (absolute: string): void => {
+-    openSidebarFile(ctx, scope.sessionId, absolute, { cwd: scope.cwd })
++    if (props.onOpenFile !== undefined) props.onOpenFile(absolute)
++    else openSidebarFile(ctx, scope.sessionId, absolute, { cwd: scope.cwd })
+   }
+ 
+   /**
+@@ -374,6 +383,14 @@ export function EditorHost(props: {
+    * actually looking at.
+    */
+   const openFileSide = (absolute: string): void => {
++    if (props.onOpenFileSide !== undefined) {
++      props.onOpenFileSide(absolute)
++      return
++    }
++    if (isNativeDocumentPath(absolute)) {
++      service?.openTab({ type: 'editor', path: absolute, target: 'side' }, scope)
++      return
++    }
+     // `store.tabOpen` answers from THIS session's own state map — the bottom
+     // workbench's splits. A natively-hosted tab (right Sidebar) is absent
+     // from them even while it is on screen.
+diff --git a/src/client/SideCardSection.module.css b/src/client/SideCardSection.module.css
+index ee1a303..918a14c 100644
+--- a/src/client/SideCardSection.module.css
++++ b/src/client/SideCardSection.module.css
+@@ -707,9 +707,7 @@
+   width: 100%;
+ }
+ 
+-/* The GitHub topic entry: a full-width secondary BUTTON (not a link — it
+-   opens a real new browser tab via window.open, bypassing the sidebar
+-   link takeover). */
++/* The GitHub topic entry: a full-width secondary button. */
+ .pluginTopicBtn {
+   width: 100%;
+   appearance: none;
+@@ -769,9 +767,7 @@
+   flex: none;
+ }
+ 
+-/* The per-entry "jump" button: opens the plugin repo in a REAL new browser
+-   tab (window.open — a button, so the sidebar link takeover cannot reroute
+-   it). Secondary style, quieter than the Install button. */
++/* The per-entry "jump" button: secondary style, quieter than Install. */
+ .pluginJumpBtn {
+   flex: none;
+   appearance: none;
+@@ -797,9 +793,8 @@
+   outline-offset: 1px;
+ }
+ 
+-/* The plugin name: a BUTTON (not an anchor — an anchor would be caught by
+-   the sidebar link takeover at document capture, ignoring target=_blank)
+-   styled like a link; opens the repo in a real new browser tab. */
++/* The plugin name is a button styled like a link so the document-level
++   anchor takeover cannot reroute this explicit external action. */
+ .pluginName {
+   appearance: none;
+   min-width: 0;
+diff --git a/src/client/SideCardSection.tsx b/src/client/SideCardSection.tsx
+index 10b322e..e4d28f0 100644
+--- a/src/client/SideCardSection.tsx
++++ b/src/client/SideCardSection.tsx
+@@ -215,7 +215,8 @@ export function FeatureSettingsRows(props: {
+   valueSource?: (key: string) => unknown
+ }) {
+   const { toggles, prefs, onToggle, onCommit, onSelectValue, onPatterns, valueSource } = props
+-  const read = valueSource ?? ((key: string): unknown => (prefs as unknown as Record<string, unknown>)[key])
++  const prefValues: Readonly<Record<string, unknown>> = { ...prefs }
++  const read = valueSource ?? ((key: string): unknown => prefValues[key])
+   return (
+     <div className={css.popupRows}>
+       {toggles.map(toggle => {
+@@ -819,7 +820,8 @@ export function SideCardSection({ store, service, guideCatalog }: SideCardSectio
+   const onCommitSetting = (toggle: SidebarSettingToggle, raw: string): string => {
+     if (toggle.type === 'number') {
+       const parsed = Number(raw)
+-      const fallback = String((prefs as unknown as Record<string, unknown>)[toggle.key] ?? '')
++      const prefValues: Readonly<Record<string, unknown>> = { ...prefs }
++      const fallback = String(prefValues[toggle.key] ?? '')
+       if (!Number.isFinite(parsed)) return fallback
+       let clamped = Math.round(parsed)
+       if (toggle.min !== undefined) clamped = Math.max(toggle.min, clamped)
+diff --git a/src/client/Sidebar.tsx b/src/client/Sidebar.tsx
+index 8aa20ac..a86b654 100644
+--- a/src/client/Sidebar.tsx
++++ b/src/client/Sidebar.tsx
+@@ -28,6 +28,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent as Re
+ import { useSyncExternalStore } from 'react'
+ import clsx from 'clsx'
+ import { IconCloseFillRegular, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
++import type {} from '@huanlin/dsh-plugin-better-locale/client'
++import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots'
+ import type { Context } from '../context-types.ts'
+ import { referenceInChat as referenceInChatShared } from './reference-in-chat.ts'
+ import { DockFallback } from './sidebar/dock-fallback.tsx'
+@@ -39,8 +41,8 @@ import {
+   type DropZone, type SidebarStore, type SidebarTab,
+ } from './state.ts'
+ import { IconPanelBottomOutline16 } from './icons.tsx'
+-import { Workbench, type WorkbenchActions } from './split-pane.tsx'
+-import { useViewportSize } from './breakpoints.ts'
++import { PaneEmptyCards, Workbench, type WorkbenchActions } from './split-pane.tsx'
++import { NARROW_MAX_WIDTH, useViewportSize } from './breakpoints.ts'
+ import { bottomPushHeight } from './layout-push.ts'
+ import { TabContent, buildNewTabOptions } from './sidebar/TabContent.tsx'
+ import { flushDraftBackups } from './editor-draft-backup.ts'
+@@ -48,7 +50,6 @@ import { confirmDiscardDraft, dirtyCount, editorDirtyRevision, subscribeEditorDi
+ import { createOpenInApp } from './open-in-app.ts'
+ import { useCenterColumn } from './sidebar/use-center-column.ts'
+ import { useHostFeeds } from './sidebar/use-host-feeds.ts'
+-import { mountedSessions } from './native/surface.ts'
+ import type { TabDragPayload } from './TabBar.tsx'
+ import { t } from './locales.ts'
+ import { useSessionRoot } from './use-session-root.ts'
+@@ -96,8 +97,9 @@ function injectUserCss(attr: string, id: string, cssText: string): HTMLStyleElem
+   return tag
+ }
+ 
+-export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
++export function Sidebar(props: { ctx: Context; store: SidebarStore; presentation?: 'portal' | 'slot'; renderFactorySlot?: RenderFactorySlot }) {
+   const { ctx, store } = props
++  const slotPresentation = props.presentation === 'slot'
+ 
+   // Copy freshness: re-render the whole tree when the DSH locale switches.
+   // The module-level t() reads the active locale at call time, so a root
+@@ -119,14 +121,8 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+   // up the new override text. Optional: ctx.get returns undefined when
+   // better-locale is absent (or when ctx is a minimal test mock without
+   // a `get` method), in which case this is a no-op uSES.
+-  type BetterLocaleStore = {
+-    readonly active: string | undefined
+-    subscribe(listener: () => void): () => void
+-  }
+   const betterLocaleStore = typeof ctx.get === 'function'
+-    ? (ctx as unknown as {
+-        get(name: 'betterLocale'): BetterLocaleStore | undefined
+-      }).get('betterLocale')
++    ? ctx.get('betterLocale')
+     : undefined
+   const betterLocaleActive = useSyncExternalStore(
+     useMemo(() => {
+@@ -155,6 +151,10 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+   }, [ctx])
+ 
+   const viewport = useViewportSize()
++  // AppFrame moves the slot back into its overlay below the same 768px
++  // breakpoint. Only the desktop slot is a persistent primary workbench;
++  // the overlay keeps the panel's existing expand/collapse behavior.
++  const primaryWorkbench = slotPresentation && viewport.width >= NARROW_MAX_WIDTH
+ 
+   // On-screen keyboard / visual-viewport inset (mobile, split-screen, …):
+   // when the visual viewport shrinks below the layout viewport, bottom-
+@@ -193,22 +193,13 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+   // so the conversation keeps CONVERSATION_MIN even on wide touch devices.
+   const layoutViewportHeight = visualViewportHeight ?? viewport.height
+ 
+-  // Current conversation (the sessions list feed).
++  // Current conversation and the Session retained by the main view.
+   const sessionList = useSyncExternalStore(
+     useMemo(() => (callback: () => void) => ctx.sessions.list.subscribe(callback), [ctx]),
+     useCallback(() => ctx.sessions.list.getSnapshot(), [ctx]),
+   )
+-  // Which conversation is on screen. The session-list snapshot has no
+-  // current-session field in ANY DSH release, so the old read of one was
+-  // permanently `undefined` and `store.setSession` below never bound a
+-  // session: DSH 0.1.7 publishes the mounted seat instead
+-  // (`ctx.sidebarRight.mounted`), and that is what the per-session state
+-  // follows.
+-  const mounted = useMemo(() => mountedSessions(ctx), [ctx])
+-  const current = useSyncExternalStore(
+-    useCallback((callback: () => void) => mounted.subscribe(callback), [mounted]),
+-    useCallback(() => mounted.getSnapshot(), [mounted]),
+-  )
++  const current = Object.values(sessionList.byId)
++    .find(summary => (summary.retainedBy?.mainView ?? 0) > 0)?.id
+ 
+   // Per-session sidebar state.
+   const snapshot = useSyncExternalStore(
+@@ -273,7 +264,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+   // workbench is slid off-screen (`bottomPanelHidden`), which is the same
+   // signal `renderTab` already gates its tab bodies on, so a collapsed shell
+   // holds no session-root timer (the store adds `document.hidden` on top).
+-  const cwd = useSessionRoot(ctx, sessionId, { visible: state?.bottomOpen === true })
++  const cwd = useSessionRoot(ctx, sessionId, { visible: primaryWorkbench || state?.bottomOpen === true })
+   // The scope the registry seams receive (badge / rightActions / + menu). Stable
+   // by content (session-scope.ts): external plugins may memoize on it, and it is
+   // rebuilt in three different callbacks below.
+@@ -284,12 +275,16 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+   // viewport resize): fresh arrays per render re-rendered every LeafView's
+   // + affordance whether or not anything tab-related moved.
+   const newTabOptions = useMemo(
+-    () => (state === undefined || shellScope === undefined ? [] : buildNewTabOptions(state, ctx, shellScope)),
++    () => buildNewTabOptions(
++      state,
++      ctx,
++      sessionId === undefined ? undefined : { sessionId, cwd },
++    ),
+     // state is the whole session state — every field it wraps is fair game
+     // for the descriptors' available() callbacks. (The render's own guard
+     // sits below every hook; this memo must handle the no-session case
+     // itself.)
+-    [state, ctx, shellScope],
++    [state, ctx, shellScope, tabsVersion],
+   )
+ 
+   // Host feeds (sidebar/use-host-feeds.ts): the agent-opens WebSocket push
+@@ -305,7 +300,11 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+   // writes them straight to the bottom panel element — per-frame tracking
+   // without re-rendering the shell (the comments live with the hook now).
+   const bottomRef = useRef<HTMLDivElement | null>(null)
+-  const { centerRectRef, centerMeasured, measureCenter, draggingRef } = useCenterColumn(bottomRef, state?.bottomOpen)
++  const { centerRectRef, centerMeasured, measureCenter, draggingRef } = useCenterColumn(
++    bottomRef,
++    state?.bottomOpen,
++    primaryWorkbench,
++  )
+ 
+   // The bottom panel's height drag (top edge strip). Drags write the size
+   // DIRECTLY to the DOM (panel style + the layout CSS variable) instead of
+@@ -354,7 +353,7 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+   const applyDrag = (height: number): void => {
+     lastDragHeight.current = height
+     bottomRef.current?.style.setProperty('height', `${height}px`)
+-    const push = state?.bottomOpen === true ? height + keyboardInset : 0
++    const push = !slotPresentation && state?.bottomOpen === true ? height + keyboardInset : 0
+     writeGeometry(push)
+   }
+ 
+@@ -476,8 +475,8 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+       height: snapshot.state?.bottomHeight ?? 0,
+       viewportHeight: layoutViewportHeight,
+     })
+-    writeGeometry(snapshot.state?.bottomOpen === true ? height + keyboardInset : 0)
+-  }, [snapshot.state?.bottomOpen, snapshot.state?.bottomHeight, layoutViewportHeight, keyboardInset])
++    writeGeometry(slotPresentation ? 0 : snapshot.state?.bottomOpen === true ? height + keyboardInset : 0)
++  }, [slotPresentation, snapshot.state?.bottomOpen, snapshot.state?.bottomHeight, layoutViewportHeight, keyboardInset])
+   // Unmount must release the push (issue #31): when the boundary swaps the
+   // whole sidebar after a render crash (or the plugin fiber is disposed /
+   // HMR), the CSS variable would otherwise stay on <html> and layout.css
+@@ -571,10 +570,20 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+   }, [openInApp])
+ 
+   if (state === undefined || sessionId === undefined) {
+-    // No conversation yet: the host stays mounted (the drag shield keeps
+-    // covering the region) but nothing is rendered — the toggle button lives
+-    // in DSH's session header, which does not exist without a session.
+-    return <div data-dsh-panel-host {...osFileDragShield} />
++    // The desktop workbench keeps its registered cards visible before the
++    // first Session exists. They stay disabled until a Session supplies the
++    // state and scope that tab creation requires.
++    return (
++      <div data-dsh-panel-host data-dsh-presentation={primaryWorkbench ? 'slot' : 'portal'} {...osFileDragShield}>
++        {primaryWorkbench && (
++          <div className={clsx(css.bottomPanel, css.bottomPanelSlot)} data-dsh-panel data-dsh-bottom-panel>
++            <div className={css.panelBody}>
++              <PaneEmptyCards newTabOptions={newTabOptions} onNewTab={() => {}} />
++            </div>
++          </div>
++        )}
++      </div>
++    )
+   }
+   const blankEntry = <DockFallback store={store} />
+ 
+@@ -679,18 +688,19 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+         onReferenceFile={referenceInChat}
+         ctx={ctx}
+         store={store}
+-        visible={state.bottomOpen && active}
++        visible={(primaryWorkbench || state.bottomOpen) && active}
+         onSubagentJump={(childSessionId) => { subagentJumpRef.current = childSessionId }}
+         onOpenDiff={(diffTab) => { store.reduce(s => openDiffTab(s, paneId, diffTab)) }}
+         localeRevision={localeRevision}
+         tabsVersion={tabsVersion}
++        renderFactorySlot={props.renderFactorySlot}
+       />
+     )
+   }
+ 
+   return (
+-    <div data-dsh-panel-host {...osFileDragShield}>
+-      {blankEntry}
++    <div data-dsh-panel-host data-dsh-presentation={primaryWorkbench ? 'slot' : 'portal'} {...osFileDragShield}>
++      {!primaryWorkbench && blankEntry}
+       {/*
+         The bottom workbench: it squeezes ONLY the center column (the agent
+         output area): it starts at the app shell's own left sidebar and ends
+@@ -705,68 +715,76 @@ export function Sidebar(props: { ctx: Context; store: SidebarStore }) {
+       */}
+       <div
+         ref={bottomRef}
+-        className={clsx(css.bottomPanel, !state.bottomOpen && css.bottomPanelHidden)}
++        className={clsx(
++          css.bottomPanel,
++          primaryWorkbench && css.bottomPanelSlot,
++          !primaryWorkbench && !state.bottomOpen && css.bottomPanelHidden,
++        )}
+         data-dsh-panel
+         data-dsh-bottom-panel
+         style={{
+-          height: bottomPanelHeight,
+-          left: centerRectRef.current.left,
++          height: primaryWorkbench ? '100%' : bottomPanelHeight,
++          left: primaryWorkbench ? 0 : centerRectRef.current.left,
+           // Keep the panel above the on-screen keyboard when the visual
+           // viewport shrinks (see the keyboardInset effect).
+-          bottom: keyboardInset > 0 ? `${keyboardInset}px` : undefined,
++          bottom: primaryWorkbench ? 0 : keyboardInset > 0 ? `${keyboardInset}px` : undefined,
+           // Direct from the center column's measured right edge: the bottom
+           // panel spans ONLY the center column, ending exactly at the
+           // details column's left edge.
+-          right: window.innerWidth - centerRectRef.current.right,
++          right: primaryWorkbench ? 0 : window.innerWidth - centerRectRef.current.right,
+           // Unmeasured center column → keep the panel invisible (zero-size
+           // geometry would flash full-width overflow instead).
+-          visibility: centerMeasured ? undefined : 'hidden',
++          visibility: primaryWorkbench || centerMeasured ? undefined : 'hidden',
+         }}
+         data-dragging={draggingBottom || undefined}
+       >
+-        <div
+-          className={clsx(css.bottomResize, draggingBottom && css.bottomResizeActive)}
+-          onPointerDown={(event) => {
+-            event.preventDefault()
+-            event.currentTarget.setPointerCapture(event.pointerId)
+-            dragCommitted.current = false
+-            bottomDrag.current = { startY: event.clientY, startHeight: state.bottomHeight }
+-            setDraggingBottom(true)
+-          }}
+-          onPointerMove={(event) => {
+-            if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+-            const { startY, startHeight } = bottomDrag.current
+-            scheduleDrag(clampHeight(startHeight + (startY - event.clientY)))
+-          }}
+-          onPointerUp={(event) => {
+-            if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+-            if (dragCommitted.current) return
+-            dragCommitted.current = true
+-            event.currentTarget.releasePointerCapture(event.pointerId)
+-            const { startY, startHeight } = bottomDrag.current
+-            // Up position wins over the rAF pending value (see the abortDrag
+-            // comment — issue #247).
+-            commitDrag(clampHeight(startHeight + (startY - event.clientY)))
+-            setDraggingBottom(false)
+-          }}
+-          onPointerCancel={(event) => { abortDrag(() => setDraggingBottom(false), event) }}
+-          onLostPointerCapture={() => { abortDrag(() => setDraggingBottom(false)) }}
+-        />
++        {!primaryWorkbench && (
++          <div
++            className={clsx(css.bottomResize, draggingBottom && css.bottomResizeActive)}
++            onPointerDown={(event) => {
++              event.preventDefault()
++              event.currentTarget.setPointerCapture(event.pointerId)
++              dragCommitted.current = false
++              bottomDrag.current = { startY: event.clientY, startHeight: state.bottomHeight }
++              setDraggingBottom(true)
++            }}
++            onPointerMove={(event) => {
++              if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
++              const { startY, startHeight } = bottomDrag.current
++              scheduleDrag(clampHeight(startHeight + (startY - event.clientY)))
++            }}
++            onPointerUp={(event) => {
++              if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
++              if (dragCommitted.current) return
++              dragCommitted.current = true
++              event.currentTarget.releasePointerCapture(event.pointerId)
++              const { startY, startHeight } = bottomDrag.current
++              // Up position wins over the rAF pending value (see the abortDrag
++              // comment — issue #247).
++              commitDrag(clampHeight(startHeight + (startY - event.clientY)))
++              setDraggingBottom(false)
++            }}
++            onPointerCancel={(event) => { abortDrag(() => setDraggingBottom(false), event) }}
++            onLostPointerCapture={() => { abortDrag(() => setDraggingBottom(false)) }}
++          />
++        )}
+         {/*
+           The bottom panel's own close control at its tab strip's right end
+           (the strip reserves the width via CSS so the + menu never hides
+           under it): one tap collapses the panel.
+         */}
+-        <Tooltip label={t('collapseBottomPanel')} side="bottom" delayMs={500}>
+-          <button
+-            type="button"
+-            className={css.bottomClose}
+-            aria-label={t('collapseBottomPanel')}
+-            onClick={() => { store.reduce(toggleBottomPanel) }}
+-          >
+-            <IconCloseFillRegular size={14} />
+-          </button>
+-        </Tooltip>
++        {!primaryWorkbench && (
++          <Tooltip label={t('collapseBottomPanel')} side="bottom" delayMs={500}>
++            <button
++              type="button"
++              className={css.bottomClose}
++              aria-label={t('collapseBottomPanel')}
++              onClick={() => { store.reduce(toggleBottomPanel) }}
++            >
++              <IconCloseFillRegular size={14} />
++            </button>
++          </Tooltip>
++        )}
+         <div className={css.panelBody}>
+           <Workbench
+             state={state}
+diff --git a/src/client/add-plugin-modal.tsx b/src/client/add-plugin-modal.tsx
+index 5fea314..04222a5 100644
+--- a/src/client/add-plugin-modal.tsx
++++ b/src/client/add-plugin-modal.tsx
+@@ -7,8 +7,9 @@
+  * matching kind (name / url / description / install script).
+  *
+  * Per entry there are two actions:
+- * - 「跳转」opens the plugin's repo in a REAL new browser tab (window.open
+- *   — a button, so the sidebar link takeover cannot reroute it);
++ * - 「跳转」opens the plugin's repo outside the workbench. YourBuddy's
++ *   embedded Client sends the URL through the desktop external-link channel;
++ *   standalone Web falls back to a new browser tab;
+  * - 「安装」only COPIES the install script to the clipboard (writeClipboard)
+  *   with a transient "已复制" feedback on the button — the user pastes and
+  *   runs it wherever they manage their DSH profile. No terminal is opened,
+@@ -25,6 +26,7 @@ import type { BetterSidebarService } from './service.ts'
+ import { PLUGIN_TOPIC_URL, type PluginEntry } from './plugins-shared.ts'
+ import { builtinTabPlugins } from './plugins-tabs.ts'
+ import { builtinViewerPlugins } from './plugins-viewers.ts'
++import { openExternalHttpUrl } from './desktop-external-links.ts'
+ import { t } from './locales.ts'
+ import css from './SideCardSection.module.css'
+ 
+@@ -88,12 +90,6 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
+     }, COPIED_FEEDBACK_MS)
+   }
+ 
+-  /** Open the plugin's repo in a REAL new browser tab (window.open — a
+-   *  button, so the sidebar link takeover cannot reroute it). */
+-  const jump = (entry: PluginEntry): void => {
+-    window.open(entry.url, '_blank', 'noopener')
+-  }
+-
+   /** One catalog row (extracted so the group render stays flat). The name
+    *  resolves like the description (string or () => string) so it follows
+    *  the active locale; a plain-string entry keeps its raw name. */
+@@ -102,15 +98,13 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
+     return (
+     <div key={entry.id} className={css.pluginEntry}>
+       <div className={css.pluginEntryHead}>
+-        {/* The name is a BUTTON on the same window.open path as the
+-            jump button: as an anchor it would be caught by the
+-            document-capture link takeover (which ignores
+-            target=_blank) and land in the sidebar browser. */}
++        {/* Keep the name a button so the sidebar's anchor takeover does not
++            route this explicit external action into its browser tab. */}
+         <button
+           type="button"
+           className={css.pluginName}
+           aria-label={`${t('openPlugin')}: ${name}`}
+-          onClick={() => { jump(entry) }}
++          onClick={() => { openExternalHttpUrl(entry.url) }}
+         >
+           {name}
+         </button>
+@@ -119,7 +113,7 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
+             type="button"
+             className={css.pluginJumpBtn}
+             aria-label={`${t('openPlugin')}: ${name}`}
+-            onClick={() => { jump(entry) }}
++            onClick={() => { openExternalHttpUrl(entry.url) }}
+           >
+             {t('openPlugin')}
+           </button>
+@@ -146,7 +140,7 @@ export function PluginListBody(props: { service: BetterSidebarService; kind: Plu
+       <button
+         type="button"
+         className={css.pluginTopicBtn}
+-        onClick={() => { window.open(PLUGIN_TOPIC_URL, '_blank', 'noopener') }}
++        onClick={() => { openExternalHttpUrl(PLUGIN_TOPIC_URL) }}
+       >
+         {t('addPluginsBrowseMore')}
+       </button>
+diff --git a/src/client/api.ts b/src/client/api.ts
+index 8be8cd1..544a16a 100644
+--- a/src/client/api.ts
++++ b/src/client/api.ts
+@@ -672,7 +672,7 @@ export const api = {
+     }),
+   /** Read the side card preferences (plugin-global, no session scope). */
+   settingsGet: () =>
+-    call<{ value?: unknown; revision?: number; externalDisable?: boolean }>('settings.get', {}),
++    call<{ value?: unknown; revision?: number; externalDisable?: boolean; presentation?: 'portal' | 'slot' }>('settings.get', {}),
+   /** Merge a patch into the side card preferences (revision-guarded). */
+   settingsUpdate: (patch: Record<string, unknown>, expectedRevision?: number) =>
+     call<{ value?: unknown; revision?: number }>('settings.update', {
+diff --git a/src/client/builtins/index.ts b/src/client/builtins/index.ts
+index 1b55738..442f2d9 100644
+--- a/src/client/builtins/index.ts
++++ b/src/client/builtins/index.ts
+@@ -24,6 +24,7 @@ export function registerBuiltins(
+ ): () => void {
+   const disposers: (() => void)[] = []
+   for (const tab of builtinTabs(ctx)) {
++    if (tab.id === 'terminal-bottom') continue
+     disposers.push(service.registerTab(tab))
+   }
+   for (const viewer of builtinViewers()) {
+diff --git a/src/client/builtins/tabs.tsx b/src/client/builtins/tabs.tsx
+index 9e48b51..edfd74f 100644
+--- a/src/client/builtins/tabs.tsx
++++ b/src/client/builtins/tabs.tsx
+@@ -161,7 +161,7 @@ export function builtinTabs(ctx: Context): readonly TabDescriptor[] {
+           <OpenWithSettings pluginSettings={pluginSettings} updatePluginSetting={updatePluginSetting} />
+         ),
+       },
+-      component: ({ ctx, store, scope, tab, visible, expanded, revealed, onToggleDir, onReferenceFile }) => (
++      component: ({ ctx, store, scope, tab, visible, expanded, revealed, onToggleDir, onReferenceFile, onOpenFile, onOpenFileInPlace, onOpenFileSide }) => (
+         <EditorHost
+           ctx={ctx}
+           store={store}
+@@ -172,6 +172,9 @@ export function builtinTabs(ctx: Context): readonly TabDescriptor[] {
+           revealed={revealed ?? []}
+           onToggleDir={onToggleDir ?? (() => { /* no-op */ })}
+           onReferenceFile={onReferenceFile ?? (() => { /* no-op */ })}
++          onOpenFile={onOpenFile}
++          onOpenFileInPlace={onOpenFileInPlace}
++          onOpenFileSide={onOpenFileSide}
+         />
+       ),
+     },
+diff --git a/src/client/conversation-draft.ts b/src/client/conversation-draft.ts
+index 21e6857..870b8c7 100644
+--- a/src/client/conversation-draft.ts
++++ b/src/client/conversation-draft.ts
+@@ -9,9 +9,8 @@
+  * draft that already carries chips) go through the host's span channels
+  * instead of plain draft text: `setDraft` rebuilds the document from a string
+  * and flattens every chip. A reference chip mints through
+- * `SidebarSessionInput.insertReference` (what the native `@` picker
+- * calls); plain-text insertion onto a chipped draft has no facade method and
+- * emits `slash/input-insert-text` directly. Plain `setDraft` is the fallback
++ * the target Session's `slash/input-insert-reference` bail event; text on a
++ * chipped draft uses `slash/input-insert-text` through the same scoped channel. Plain `setDraft` is the fallback
+  * for chipless drafts only.
+  *
+  * Everything appends at the document end. The host composer is a Lexical
+@@ -19,11 +18,11 @@
+  * would have to guess a position — see {@link appendOffset} for the one
+  * coordinate it does derive.
+  */
++import { SessionId } from '@deepseek-ai/dsh-session/types'
++import type { InputState } from '@deepseek-ai/dsh-client-ui-conversation/client'
+ import type {
+   Context,
+-  SidebarConversation,
+   SidebarReferenceInsert,
+-  SidebarSessionInput,
+   SidebarSessionOccurrence,
+ } from '../context-types.ts'
+ import { baseName, workspaceRelativePath } from './paths.ts'
+@@ -144,7 +143,7 @@ export function foldClipboardOffset(
+  * covers exactly `claim.token`, a prefix of the draft, so its own characters
+  * fold away and one placeholder takes their place.
+  */
+-function appendOffset(snapshot: ReturnType<SidebarSessionInput['state']['getSnapshot']>): number | undefined {
++function appendOffset(snapshot: InputState): number | undefined {
+   const { draft, claim } = snapshot
+   const occurrences = snapshot.occurrences ?? []
+   const token = snapshot.phase === 'claimed' && claim !== undefined && draft.startsWith(claim.token)
+@@ -161,11 +160,9 @@ function appendOffset(snapshot: ReturnType<SidebarSessionInput['state']['getSnap
+ }
+ 
+ /**
+- * Mint one reference chip through the host's own `insertReference` — the
+- * same facade method the native `@` picker's event listener calls, so the
+- * composer shows a compact chip while the model receives `reference.text`.
+- * The host runs its own admission-phase and revision guards and reports
+- * whether the edit applied.
++ * Insert a chip through the target Session's first accepting editor.
++ * The composer shows the compact label; the model receives the reference.
++ * Admission-phase and span revision guards can refuse the edit.
+  *
+  * The chip's `clipboardText` is the compact `label`, not the full payload —
+  * see {@link PendingReference.clipboardText}.
+@@ -180,14 +177,14 @@ export function insertDraftReference(
+ ): boolean {
+   let before: number | undefined
+   try {
+-    const actx = ctx.sessions.scope(sessionId)
++    const actx = ctx.sessions.scope(SessionId(sessionId))
+     if (actx === undefined) return false
+-    const conversation = ctx.get('conversation') as SidebarConversation | undefined
++    const conversation = ctx.get('conversation')
+     if (conversation === undefined) return false
+     const input = conversation.input.for(actx)
+     const snapshot = input.state.getSnapshot()
+-    if (input.insertReference === undefined || snapshot.draftRev === undefined) return false
+-    if (snapshot.phase === 'adjudicating' || snapshot.phase === 'submitting') return false
++    if (snapshot.draftRev === undefined) return false
++    if (snapshot.phase === 'adjudicating' || snapshot.phase === 'submitting' || snapshot.phase === 'sending') return false
+     before = snapshot.draftRev
+     // Chips always append at the document end (there is no caret API and the
+     // composer is a contenteditable, not a textarea — `probeComposerCaret`
+@@ -201,8 +198,7 @@ export function insertDraftReference(
+     let rev = snapshot.draftRev
+     let start = at
+     if (leadFor(snapshot.draft) !== '') {
+-      const actxEmit = actx as unknown as { emit(name: string, payload: unknown): void }
+-      actxEmit.emit('slash/input-insert-text', {
++      actx.bail(actx, 'slash/input-insert-text', {
+         text: ' ',
+         span: { draftRev: rev, start: at, end: at },
+       })
+@@ -223,7 +219,10 @@ export function insertDraftReference(
+       ...reference.appearance === undefined ? {} : { appearance: reference.appearance },
+       clipboardText: reference.clipboardText ?? reference.label,
+     }
+-    return input.insertReference(chip, { draftRev: rev, start, end: start })
++    return actx.bail(actx, 'slash/input-insert-reference', {
++      reference: chip,
++      span: { draftRev: rev, start, end: start },
++    }) === true
+   } catch (error) {
+     // The host may have applied the edit and THEN thrown from its own update
+     // listeners — reporting false would make the caller insert the same
+@@ -241,9 +240,9 @@ export function insertDraftReference(
+  */
+ function revisionChanged(ctx: Context, sessionId: string, revision?: number): boolean {
+   try {
+-    const actx = ctx.sessions.scope(sessionId)
++    const actx = ctx.sessions.scope(SessionId(sessionId))
+     if (actx === undefined) return false
+-    const conversation = ctx.get('conversation') as SidebarConversation | undefined
++    const conversation = ctx.get('conversation')
+     const input = conversation?.input.for(actx)
+     const now = input?.state.getSnapshot().draftRev
+     if (now === undefined || revision === undefined) return false
+@@ -263,18 +262,19 @@ function revisionChanged(ctx: Context, sessionId: string, revision?: number): bo
+  */
+ export function appendToDraft(ctx: Context, sessionId: string, text: string): boolean {
+   try {
+-    const actx = ctx.sessions.scope(sessionId)
++    const actx = ctx.sessions.scope(SessionId(sessionId))
+     if (actx === undefined) {
+       console.warn('[dsh-better-sidebar] draft insert skipped: no session scope', sessionId)
+       return false
+     }
+-    const conversation = ctx.get('conversation') as SidebarConversation | undefined
++    const conversation = ctx.get('conversation')
+     if (conversation === undefined) {
+       console.warn('[dsh-better-sidebar] draft insert skipped: conversation service unavailable')
+       return false
+     }
+     const input = conversation.input.for(actx)
+     const snapshot = input.state.getSnapshot()
++    if (snapshot.phase === 'adjudicating' || snapshot.phase === 'submitting' || snapshot.phase === 'sending') return false
+     const draft = snapshot.draft
+     const occurrences = snapshot.occurrences ?? []
+     // A command chip (`/goal`) is not a reference occurrence, but `setDraft`
+@@ -296,10 +296,7 @@ export function appendToDraft(ctx: Context, sessionId: string, text: string): bo
+         console.warn('[dsh-better-sidebar] draft insert skipped: chip draft without a revision')
+         return false
+       }
+-      // The session-scope Context's typed `emit` is keyed to DSH's closed
+-      // event map; this internal composer event is string-loose at runtime.
+-      const actxEmit = actx as unknown as { emit(name: string, payload: unknown): void }
+-      actxEmit.emit('slash/input-insert-text', {
++      actx.bail(actx, 'slash/input-insert-text', {
+         text: `${leadFor(draft)}${text}`,
+         span: { draftRev: snapshot.draftRev, start: at, end: at },
+       })
+@@ -379,7 +376,7 @@ export function insertWorkspaceReference(ctx: Context, sessionId: string, path:
+   try {
+     const snapshot = ctx.get('workspaces')?.list.getSnapshot()
+     const root = snapshot?.phase === 'ready' && snapshot.state === 'idle'
+-      ? snapshot.items.find(workspace => workspace.sessionIds.includes(sessionId))?.path
++      ? snapshot.items.find(workspace => workspace.sessionIds.includes(SessionId(sessionId)))?.path
+       : undefined
+     const relative = workspaceRelativePath(root, path)
+     if (relative === undefined) {
+diff --git a/src/client/desktop-external-links.ts b/src/client/desktop-external-links.ts
+new file mode 100644
+index 0000000..b4bc443
+--- /dev/null
++++ b/src/client/desktop-external-links.ts
+@@ -0,0 +1,50 @@
++/** Open HTTP(S) destinations through the desktop shell or an ordinary browser tab. */
++const DESKTOP_EXTERNAL_LINK_CHANNEL = 'yourbuddy.desktop.external-link'
++const DESKTOP_EXTERNAL_LINK_VERSION = 1
++const MAX_EXTERNAL_URL_LENGTH = 4096
++let externalLinkSequence = 0
++
++/**
++ * Normalize an HTTP(S) destination accepted by the desktop shell.
++ * @param value - Candidate absolute URL.
++ * @returns The normalized URL, or undefined when the value is unsupported.
++ */
++export function resolveExternalHttpUrl(value: string): string | undefined {
++  if (value.length === 0 || value.length > MAX_EXTERNAL_URL_LENGTH) return void 0
++  try {
++    const url = new URL(value)
++    if (url.protocol !== 'http:' && url.protocol !== 'https:'
++      || url.hostname === ''
++      || url.username !== ''
++      || url.password !== ''
++      || url.href.length > MAX_EXTERNAL_URL_LENGTH) return void 0
++    return url.href
++  } catch {
++    return
++  }
++}
++
++/**
++ * Dispatch an HTTP(S) destination without navigating the workbench.
++ * @param value - Candidate absolute URL.
++ * @returns True when the URL was sent to the desktop shell or browser API.
++ */
++export function openExternalHttpUrl(value: string): boolean {
++  if (typeof window === 'undefined') return false
++  const url = resolveExternalHttpUrl(value)
++  if (url === void 0) return false
++  if (window.parent !== window) {
++    externalLinkSequence += 1
++    window.parent.postMessage({
++      channel: DESKTOP_EXTERNAL_LINK_CHANNEL,
++      version: DESKTOP_EXTERNAL_LINK_VERSION,
++      type: 'open-request',
++      requestId: `${Date.now()}_${externalLinkSequence}`,
++      url
++    }, '*')
++    return true
++  }
++  const opened = window.open(url, '_blank', 'noopener,noreferrer')
++  if (opened !== null) opened.opener = null
++  return true
++}
+diff --git a/src/client/index.tsx b/src/client/index.tsx
+index 7b06e92..d225e72 100644
+--- a/src/client/index.tsx
++++ b/src/client/index.tsx
+@@ -16,6 +16,7 @@ import { createBetterSidebarService, matchUrlTarget } from './service.ts'
+ import { disposeSidechatSurfaces } from './sidechat-surface.ts'
+ import { revalidateChunksOnReactivate, setChunkModuleSystem } from './chunk-loader.ts'
+ import { registerBuiltins } from './builtins/index.ts'
++import { builtinTabs } from './builtins/tabs.tsx'
+ import { Sidebar } from './Sidebar.tsx'
+ import { RenderBoundary } from './RenderBoundary.tsx'
+ import { createNativeTabRecords } from './native/tab-adapter.tsx'
+@@ -24,6 +25,8 @@ import { createNativeGuideCatalog } from './native/guide-catalog.ts'
+ import { registerBottomToggle } from './sidebar/bottom-toggle.tsx'
+ import { ContextDiagnosticsHost, createContextDiagnosticsHost, registerContextDiagnosticsUI } from './context-diagnostics-ui.tsx'
+ import { createNativeSurface } from './native/surface.ts'
++import { registerWorkbenchTerminal } from './native/terminal-adapter.tsx'
++import type { PropsRenderFactories } from '@deepseek-ai/dsh-client-ui-slots'
+ import { isTargetAvailable, openInterceptedLink, registerLinkInterception, shouldTakeOverLink } from './link-intercept.ts'
+ import { registerImeGuard } from './ime-guard.ts'
+ import { registerQuoteSource } from './selection-quote.ts'
+@@ -53,6 +56,11 @@ import './layout.css'
+  *  which, thrown from a render path, blanks the whole sidebar panel. */
+ export const inject = ['slots', 'sessions', 'locale', 'modules', 'connection', 'remote', 'remote.session']
+ 
++interface ProductWorkbenchFace {
++  handleBetterSidebarOpen(intent: 'user' | 'background'): void
++  setSessionExpanded(expanded: boolean): void
++}
++
+ /**
+  * Error boundary over the sidebar tree (root scope): a render error in the
+  * sidebar SHELL itself must never blank the page silently — the shared
+@@ -168,11 +176,23 @@ export function apply(ctx: Context): void {
+   // registrations (the official createXXXStore() factory rule — no
+   // module-level singleton).
+   const sidebarStore = createSidebarStore()
++  let slotPresentationActive = false
+   // The sidebar registry service: external plugins register tab types and
+   // file previewers through `ctx.betterSidebar.registerTab/registerFileViewer`.
+   // Published before the panel mounts so consumers injecting 'betterSidebar'
+   // are ready by the time the sidebar renders.
+-  const service = createBetterSidebarService(sidebarStore)
++  const service = createBetterSidebarService(sidebarStore, {
++    preferWorkbench: () => slotPresentationActive,
++    onOpenIntent: intent => {
++      const coordinator = ctx.get('yourBuddyWorkbench') as ProductWorkbenchFace | undefined
++      coordinator?.handleBetterSidebarOpen(intent)
++    },
++    onNativeDocumentOpen: intent => {
++      if (intent !== 'user') return
++      const coordinator = ctx.get('yourBuddyWorkbench') as ProductWorkbenchFace | undefined
++      coordinator?.setSessionExpanded(true)
++    },
++  })
+   ctx.provide('betterSidebar', service)
+   ctx.effect(() => () => { disposeSidechatSurfaces(service) }, 'dsh-better-sidebar: sidechat surface adapters')
+   // The native right-Sidebar surface: the plugin's content is registered as
+@@ -250,12 +270,14 @@ export function apply(ctx: Context): void {
+       let disposed = false
+       let root: Root | undefined
+       let host: HTMLDivElement | undefined
+-      let mounted = false
++      let mountedPresentation: 'portal' | 'slot' | undefined
++      let disposeSlot: (() => void) | undefined
++      let disposeWorkbenchTerminal: (() => void) | undefined
+       let bodyObserver: MutationObserver | undefined
+       let hostCheckFrame: number | null = null
+       const unmount = (): void => {
+-        if (!mounted) return
+-        mounted = false
++        if (mountedPresentation === undefined) return
++        mountedPresentation = undefined
+         bodyObserver?.disconnect()
+         bodyObserver = undefined
+         if (hostCheckFrame !== null) {
+@@ -266,6 +288,12 @@ export function apply(ctx: Context): void {
+         root = undefined
+         host?.remove()
+         host = undefined
++        disposeSlot?.()
++        disposeSlot = undefined
++        disposeWorkbenchTerminal?.()
++        disposeWorkbenchTerminal = undefined
++        slotPresentationActive = false
++        document.body.removeAttribute('data-dsh-better-sidebar-presentation')
+       }
+       /** Re-attach the host if the page (a desktop shell wrapper, SPA
+        *  navigation, …) ever removes it from <body>. Cheap: childList only,
+@@ -337,26 +365,42 @@ export function apply(ctx: Context): void {
+           hostCheckFrame = requestAnimationFrame(sync)
+         })
+       }
+-      const mount = (): void => {
+-        if (mounted || disposed) return
++      const mount = (presentation: 'portal' | 'slot'): void => {
++        if (disposed || mountedPresentation === presentation) return
++        unmount()
+         try {
+-          host = document.createElement('div')
+-          host.setAttribute('data-dsh-better-sidebar', '')
+-          document.body.appendChild(host)
+-          root = createRoot(host)
+-          root.render(createElement(
+-            RenderBoundary,
+-            { className: css.boundaryError },
+-            createElement(
+-              ContextDiagnosticsHost,
+-              { controller: diagnostics },
+-              createElement(Sidebar, { ctx, store: sidebarStore }),
+-            ),
+-          ))
+-          mounted = true
+-          guardAnchor()
+-          scheduleHostCheck()
++          mountedPresentation = presentation
++          document.body.setAttribute('data-dsh-better-sidebar-presentation', presentation)
++          if (presentation === 'slot') {
++            const WorkbenchSlot = ({ renderFactorySlot }: PropsRenderFactories) => createElement(
++              RenderBoundary,
++              { className: css.boundaryError },
++              createElement(ContextDiagnosticsHost, { controller: diagnostics },
++                createElement(Sidebar, { ctx, store: sidebarStore, presentation: 'slot', renderFactorySlot })),
++            )
++            slotPresentationActive = true
++            disposeWorkbenchTerminal = registerWorkbenchTerminal(ctx, sidebarStore, service)
++            disposeSlot = ctx.slots.inject('workbench.core', () =>
++              ctx.slots.register({ name: 'workbench.core' }, WorkbenchSlot))
++          } else {
++            const terminal = builtinTabs(ctx).find(tab => tab.id === 'terminal-bottom')
++            if (terminal === undefined) throw new Error('Missing built-in bottom terminal descriptor')
++            disposeWorkbenchTerminal = service.registerTab(terminal)
++            host = document.createElement('div')
++            host.setAttribute('data-dsh-better-sidebar', '')
++            document.body.appendChild(host)
++            root = createRoot(host)
++            root.render(createElement(
++              RenderBoundary,
++              { className: css.boundaryError },
++              createElement(ContextDiagnosticsHost, { controller: diagnostics },
++                createElement(Sidebar, { ctx, store: sidebarStore, presentation: 'portal' })),
++            ))
++            guardAnchor()
++            scheduleHostCheck()
++          }
+         } catch (error) {
++          unmount()
+           fail('mount', error)
+         }
+       }
+@@ -382,7 +426,7 @@ export function apply(ctx: Context): void {
+           sidebarStore.setSuspended(decision.suspended)
+         }
+         if (decision?.suspended) unmount()
+-        else mount()
++        else mount(decision?.presentation ?? 'portal')
+       }
+       // setPrefs and mount() run inside sync(); a rejection there would leave
+       // the sidebar unmounted with a dead toggle as its only symptom.
+diff --git a/src/client/layout.css b/src/client/layout.css
+index 9b1b8af..5426cf2 100644
+--- a/src/client/layout.css
++++ b/src/client/layout.css
+@@ -55,6 +55,15 @@ body[data-dsh-sidebar-dragging] #root [data-dsh-center-col] {
+   transition: none;
+ }
+ 
++/* The desktop Slot is always present, so its old bottom-panel toggle would
++   only mutate dormant overlay state. The control remains available when
++   AppFrame moves the workbench into its narrow overlay. */
++@media (min-width: 768px) {
++  body[data-dsh-better-sidebar-presentation='slot'] [data-dsh-bottom-toggle] {
++    display: none;
++  }
++}
++
+ @media (prefers-reduced-motion: reduce) {
+   #root [data-dsh-center-col] {
+     transition: none;
+diff --git a/src/client/link-intercept.ts b/src/client/link-intercept.ts
+index f9f87f2..6be719b 100644
+--- a/src/client/link-intercept.ts
++++ b/src/client/link-intercept.ts
+@@ -17,6 +17,8 @@
+  * working inside the sidebar).
+  */
+ 
++import { openExternalHttpUrl } from './desktop-external-links.ts'
++
+ /** `new URL(value)`, or null for an unparsable href. */
+ function parseUrl(value: string): URL | null {
+   try {
+@@ -104,7 +106,7 @@ export function openInterceptedLink(url: string, deps: {
+   // switched off, or the plugin's service is detached): hand it to the real
+   // browser so the click is never a silent no-op. A click IS the user
+   // gesture, so the popup blocker lets this through.
+-  window.open(url, '_blank', 'noopener,noreferrer')
++  openExternalHttpUrl(url)
+   return 'window'
+ }
+ 
+diff --git a/src/client/locales-ja.ts b/src/client/locales-ja.ts
+index ca5dae9..e9d79d7 100644
+--- a/src/client/locales-ja.ts
++++ b/src/client/locales-ja.ts
+@@ -409,6 +409,7 @@ export const ja: Record<string, string> = {
+   settingsGeneralTitle: '一般',
+   settingsPopup: '機能設定',
+   settingsViewerCatchAll: 'フォールバック：任意のファイル',
++  viewerImage: '画像',
+   viewerMarkdown: 'Markdown',
+   viewerCode: 'コード',
+   viewerHtml: 'HTML',
+diff --git a/src/client/locales-ko.ts b/src/client/locales-ko.ts
+index 23d12f2..abcc8c9 100644
+--- a/src/client/locales-ko.ts
++++ b/src/client/locales-ko.ts
+@@ -401,6 +401,7 @@ export const ko: Record<string, string> = {
+   settingsGeneralTitle: '일반',
+   settingsPopup: '기능 설정',
+   settingsViewerCatchAll: '폴백: 모든 파일',
++  viewerImage: '이미지',
+   viewerMarkdown: 'Markdown',
+   viewerCode: '코드',
+   viewerHtml: 'HTML',
+diff --git a/src/client/locales.ts b/src/client/locales.ts
+index 1e04333..39e06d4 100644
+--- a/src/client/locales.ts
++++ b/src/client/locales.ts
+@@ -421,6 +421,7 @@ export const zh = {
+   settingsGeneralTitle: '常规',
+   settingsPopup: '功能设置',
+   settingsViewerCatchAll: '兜底：任意文件',
++  viewerImage: '图片',
+   viewerMarkdown: 'Markdown',
+   viewerCode: '代码',
+   viewerHtml: 'HTML',
+@@ -1151,6 +1152,7 @@ export const en: Record<keyof typeof zh, string> = {
+   settingsGeneralTitle: 'General',
+   settingsPopup: 'Feature settings',
+   settingsViewerCatchAll: 'Catch-all: any file',
++  viewerImage: 'Image',
+   viewerMarkdown: 'Markdown',
+   viewerCode: 'Code',
+   viewerHtml: 'HTML',
+diff --git a/src/client/native/file-types.ts b/src/client/native/file-types.ts
+new file mode 100644
+index 0000000..1cfa758
+--- /dev/null
++++ b/src/client/native/file-types.ts
+@@ -0,0 +1,13 @@
++/** File types whose shipped DSH reader replaces the workbench's binary download pane. */
++const DOCUMENT_EXTENSIONS: ReadonlySet<string> = new Set(['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'])
++
++/**
++ * Whether a file uses the existing PDF, Office, or Excel reader.
++ * @param path - Absolute or Session-relative file path, with either path separator.
++ * @returns true for a supported document extension; dotfiles remain ordinary files.
++ */
++export function isNativeDocumentPath(path: string): boolean {
++  const name = path.slice(Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1)
++  const dot = name.lastIndexOf('.')
++  return dot > 0 && DOCUMENT_EXTENSIONS.has(name.slice(dot + 1).toLowerCase())
++}
+diff --git a/src/client/native/index.ts b/src/client/native/index.ts
+index fde5b2f..fa42f67 100644
+--- a/src/client/native/index.ts
++++ b/src/client/native/index.ts
+@@ -7,14 +7,14 @@
+  *   viewer — it claims `dsh-resource://file/**` at the default `extension`
+  *   band, which outranks the built-in `text` preview (`fallback`), so a file
+  *   the product opens lands in the plugin's editor — EXCEPT the formats
+- *   {@link HOST_OWNED_EXTS} hands back to DSH's own previews, which are
++ *   {@link hostOwnedPath} hands back to DSH's own previews, which are
+  *   strictly better for binary documents (host-side Office→PDF conversion,
+  *   a worker-backed spreadsheet table, a zoom viewport);
+  * - the built-in `files` page kind is TAKEN OVER by an `extension`
+  *   registration of the same kind, so `openTab('files')` draws the plugin's
+  *   explorer instead of the built-in tree; the built-in resumes when this
+  *   plugin unregisters;
+- * - every other descriptor (changes / subagent / side chat / terminal /
++ * - every descriptor not marked workbench-only (changes / subagent / side chat /
+  *   browser / diff) becomes a page type of its own.
+  *
+  * The registrations follow the plugin's registry lifecycle: a descriptor
+@@ -22,6 +22,9 @@
+  * the user disabled in the side-card settings is unregistered — so it is
+  * absent from the native guide and `openTab` refuses it.
+  */
++import type { ISidebarRight, SidebarRightCloseHandler, SidebarRightGuideEntry } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
++import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
++import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
+ import type { Context } from '../../context-types.ts'
+ import { addressBaseOf, resolveAddressPath } from '../address-base.ts'
+ import { flushDraftBackups } from '../editor-draft-backup.ts'
+@@ -29,6 +32,7 @@ import { t } from '../locales.ts'
+ import { splitTrailingLineSpec } from '../path-line.ts'
+ import { baseName } from '../paths.ts'
+ import { parseFileAddress } from '../resource-address.ts'
++import { isNativeDocumentPath } from './file-types.ts'
+ import type { ContextDiagnostics } from '../context-diagnostics.ts'
+ import type { BetterSidebarService, TabDescriptor } from '../service.ts'
+ import type { SidebarStore } from '../state.ts'
+@@ -47,7 +51,8 @@ import {
+ } from './tab-adapter.tsx'
+ 
+ /**
+- * Extensions DSH's own previews own, and this plugin therefore refuses.
++ * Additional extensions DSH's own previews own, besides the PDF and Office files
++ * shared with the workbench through {@link isNativeDocumentPath}.
+  *
+  * DSH 0.1.7 grew a real document-preview package (host-side Office→PDF
+  * conversion, a worker-backed spreadsheet table, image/PDF zoom viewports and
+@@ -60,7 +65,7 @@ import {
+  * Refusing here is what hands the address over: `canOpen` returning false
+  * leaves the built-in `text` type (the `fallback` band) as the only claimant.
+  *
+- * The list is exactly the set the host renders — nothing more. Nine extensions
++ * Together these are exactly the set the host renders — nothing more. Nine extensions
+  * that the host has NO renderer for (`xlsb xlt xltx xltm ots dot dotx avif`)
+  * used to be refused here too, and refusing them turned "the plugin shows a
+  * download panel" into "the host shows 'preview is not available for this file
+@@ -71,62 +76,26 @@ import {
+  */
+ const HOST_OWNED_EXTS: ReadonlySet<string> = new Set([
+   // Spreadsheets: the built-in renders a table in a worker.
+-  'xlsx', 'xls', 'csv', 'tsv', 'fods',
+-  // PDF: the built-in viewer pages and zooms.
+-  'pdf',
++  'csv', 'tsv', 'fods',
+   // Images: the built-in viewer adds a zoom viewport.
+   'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico',
+-  // Office documents: the built-in converts them to PDF host-side.
+-  'doc', 'docx', 'ppt', 'pptx',
+ ])
+ 
+ /**
+  * Whether DSH's own preview owns one path.
+  * @param path - the address's decoded path.
+- * @returns true for a {@link HOST_OWNED_EXTS} extension (a dotfile is not one).
++ * @returns true for a shipped host preview extension (a dotfile is not one).
+  */
+ function hostOwnedPath(path: string): boolean {
++  if (isNativeDocumentPath(path)) return true
+   const name = path.slice(path.lastIndexOf('/') + 1)
+   const dot = name.lastIndexOf('.')
+   return dot > 0 && HOST_OWNED_EXTS.has(name.slice(dot + 1).toLowerCase())
+ }
+ 
+-/**
+- * The close-hook slice of `ctx.sidebarRight`: `registerCloseHandler` lives on
+- * the concrete controller, not on `ISidebarRight`, so it is probed
+- * structurally (same shape the host's own terminal tab uses).
+- */
+-interface CloseHandlerHost {
+-  /** Run one kind's cleanup before its record is removed; a throw vetoes the close. */
+-  registerCloseHandler(kind: string, handler: (sessionId: string, tab: { kind: string }) => void): () => void
+-}
+-
+-/** The optional plugin-discovery navigation face (`ctx.pluginNavigation`). */
+-interface PluginNavigationFace {
+-  openList?: () => void
+-}
+-
+-/** The workspace's session starter, used by the host's "create plugin" action. */
+-interface WorkspaceSessionFace {
+-  startSession?: (
+-    sessionId: string | undefined,
+-    options: { agentPreset?: string; prompt?: string; whenDraftExists?: 'append' },
+-  ) => void
+-}
+-
+-/** The native tab-type registry face (`ctx.sidebarRightTabs`). */
+-interface NativeTabRegistry {
+-  register(definition: {
+-    id: string
+-    kind: string
+-    multiple?: boolean
+-    keepMounted?: boolean
+-    patterns?: readonly string[]
+-    priority?: 'extension' | 'builtin' | 'fallback'
+-    canOpen?: (address: string) => boolean
+-    title: (address: string) => string
+-    guide?: readonly { id: string; order: number; title: () => string; description?: () => string; icon?: unknown }[]
+-  }): () => void
++/** Tab descriptors eligible for the native right Sidebar. */
++export function nativeTabDescriptors(service: BetterSidebarService): readonly TabDescriptor[] {
++  return service.getTabs().filter(descriptor => descriptor.native !== false && descriptor.bottomOnly !== true && service.isTabEnabled(descriptor.id))
+ }
+ 
+ /** The descriptor's title text, evaluated fresh for the current locale. */
+@@ -156,8 +125,8 @@ function guideDescriptionOf(descriptor: TabDescriptor | undefined): { descriptio
+  * @param icon - the descriptor's icon value.
+  * @returns the guide-entry icon fields, or an empty object.
+  */
+-function guideIconOf(icon: TabDescriptor['icon']): { icon?: (props: { size?: number }) => unknown } {
+-  return typeof icon === 'function' ? { icon: (props: { size?: number }) => icon(props.size ?? 16) } : {}
++function guideIconOf(icon: TabDescriptor['icon']): Pick<SidebarRightGuideEntry, 'icon'> {
++  return typeof icon === 'function' ? { icon: props => icon(props.size ?? 16) } : {}
+ }
+ 
+ /**
+@@ -308,14 +277,10 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
+   // `sidebarRightTabs` undefined, and the registry appeared a moment later.
+   // `ctx.inject` re-runs this body whenever the service appears/reappears,
+   // which is the lifecycle the registrations need.
+-  //
+-  // The close handler below needs `sidebarRight` as well; both services are
+-  // provided by the same host package, so waiting for both changes nothing
+-  // about WHEN the types register.
+   const seat = ctx.inject(['sidebarRightTabs', 'sidebarRight'], (injected) => {
+-    const tabs = injected.get('sidebarRightTabs') as unknown as NativeTabRegistry | undefined
++    const tabs = injected.get('sidebarRightTabs')
+     if (tabs === undefined) return
+-    const right = injected.get('sidebarRight') as unknown as CloseHandlerHost | undefined
++    const right = injected.get('sidebarRight') as (ISidebarRight & { registerCloseHandler(kind: string, handler: SidebarRightCloseHandler): () => void }) | undefined
+     const live = new Map<string, Registration>()
+ 
+     // The host runs this hook before removing a record (the strip's ×, its
+@@ -359,8 +324,8 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
+                   ? sessionId
+                   : mountedSessionId(ctx)
+                 const terminals = webTerminals(ctx)
+-                const navigation = ctx.get('pluginNavigation') as unknown as PluginNavigationFace | undefined
+-                const workspace = ctx.get('uiWorkspace') as unknown as WorkspaceSessionFace | undefined
++                const navigation = ctx.get('pluginNavigation')
++                const workspace = ctx.get('uiWorkspace')
+                 const onBrowsePlugins = typeof navigation?.openList === 'function'
+                   ? () => { navigation.openList!() }
+                   : undefined
+@@ -585,13 +550,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
+     const sync = (): void => {
+       syncGuide()
+       const wanted = new Map<string, () => () => void>()
+-      for (const descriptor of service.getTabs()) {
+-        if (!service.isTabEnabled(descriptor.id)) continue
+-        // A `bottomOnly` type lives in the plugin's own workbench and has no
+-        // native tab: registering one would put a second capsule in the
+-        // host's guide for a page it cannot draw (the bottom terminal is the
+-        // case — the host owns the right-Sidebar `terminal` kind outright).
+-        if (descriptor.bottomOnly === true) continue
++      for (const descriptor of nativeTabDescriptors(service)) {
+         wanted.set(descriptor.id, () => registerDescriptor(descriptor))
+       }
+       for (const [descriptorId, registration] of live) {
+diff --git a/src/client/native/surface.ts b/src/client/native/surface.ts
+index 1300b4d..0e52109 100644
+--- a/src/client/native/surface.ts
++++ b/src/client/native/surface.ts
+@@ -1,254 +1,129 @@
+-/**
+- * The plugin's write face over DSH's native right Sidebar (`ctx.sidebarRight`).
+- *
+- * The service speaks in the plugin's own vocabulary (tab type, seed, session
+- * scope); this module turns those into the native surface's vocabulary
+- * (kind + navigation params, or a `dsh-resource://` address) and forwards
+- * tab-record operations to the plugin's native record registry.
+- *
+- * Two native limits shape the implementation:
+- *
+- * - the surface exists only while a session's panel is mounted, and the
+- *   service's public face (`ISidebarRight`) writes only into THAT session.
+- *   "Which session that is" comes from the controller's `mounted` observation
+- *   ({@link mountedSessions}) — never from the session list, which has no
+- *   current-session field. The controller also carries `openTabIn` /
+- *   `openResourceIn` / `closeIn`, but the two open faces are silent no-ops for
+- *   a session whose store the runtime never minted or adopted — they report
+- *   nothing back — so an open aimed at a session that is not on screen is NOT
+- *   handed to them: it stays QUEUED and is replayed once that session comes
+- *   on screen;
+- * - layout state is memory-only, so a queued open is not durable either.
+- */
++/** Session-targeted writes and FIFO deferred opens for the native right Sidebar. */
++import { brandString } from '@deepseek-ai/dsh-brand'
++import { SessionId } from '@deepseek-ai/dsh-session/types'
++import type { ISidebarRight, TabId } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
++import type {} from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
+ import type { Context } from '../../context-types.ts'
+ import { addressBaseOf } from '../address-base.ts'
+ import { fileAddressFor } from '../resource-address.ts'
+-import type { NativePathTab, NativeTabParams, SidebarSurface } from '../service.ts'
++import type { NativePathTab, NativeTabKind, NativeTabParams, SidebarSurface } from '../service.ts'
+ import type { NativeTabRecords } from './tab-adapter.tsx'
+ 
+-/** One open the surface could not place yet. */
++/** One open retained until its target Session adopts a Sidebar store. */
+ type Pending =
+   | { kind: 'tab'; sessionId: string; tabKind: string; params: NativeTabParams; revealIfOpened: boolean; preferNewPane: boolean }
+   | { kind: 'resource'; sessionId: string; address: string; line: number | undefined; revealIfOpened: boolean; preferNewPane: boolean }
+ 
+-/**
+- * The observation "which session's seat is on screen": DSH 0.1.7 publishes it
+- * as `ISidebarRight.mounted` (`ObservableSnapshot<SessionId | undefined>`, set
+- * only when the mounted seat really changes). `undefined` means NO seat is
+- * drawn — a global panel, or a right column that was never mounted.
+- */
++/** The Session currently displayed by the native Sidebar controller. */
+ export interface MountedSessions {
+   getSnapshot(): string | undefined
+   subscribe(listener: () => void): () => void
+ }
+ 
+-/** The controller face this module uses (a structural slice of `ISidebarRight`). */
+-interface NativeController {
+-  openTab(kind: string, options?: { params?: unknown; revealIfOpened?: boolean; preferNewPane?: boolean }): void
+-  openResource(address: string, options?: { params?: unknown; revealIfOpened?: boolean; preferNewPane?: boolean }): void
+-  close(tabId: string): void
+-  /** The mounted-seat observation (0.1.7 `ISidebarRight.mounted`). */
+-  mounted?: MountedSessions
+-  /** `ISidebarRight.focus` — focuses the tab and the pane holding it (dsh >= 0.1.5). */
+-  focus?(tabId: string): void
+-  /**
+-   * Not part of `ISidebarRight`: the concrete controller's per-session writes.
+-   * The two open faces are kept as the seam a boolean-reporting host API would
+-   * plug into, but `place()` deliberately does not use them: they cannot tell
+-   * "written" from "no store adopted yet" (see the module header).
+-   */
+-  openTabIn?(sessionId: string, kind: string, options?: { params?: unknown; revealIfOpened?: boolean; preferNewPane?: boolean }): void
+-  openResourceIn?(sessionId: string, address: string, options?: { params?: unknown; revealIfOpened?: boolean; preferNewPane?: boolean }): void
+-  closeIn?(sessionId: string, tabId: string): void
++declare module '@deepseek-ai/dsh-client-ui-sidebar-right/client' {
++  /** Page parameters owned by Better Sidebar's descriptor adapter. */
++  interface SidebarRightTabParamsMap extends Record<NativeTabKind, NativeTabParams> {}
+ }
+ 
+-/** The plugin's write face over the native surface. */
++/** Native operations and the observer cleanup owned by this adapter. */
+ export interface NativeSurface extends SidebarSurface {
+-  /** Replay opens that were queued for a session that had no mounted surface. */
++  /** Retry queued opens after a host store is adopted. */
+   flushPending(): void
+-  /** Stop observing the session list and the mounted-seat feed. */
++  /** Release observers and pending opens. */
+   dispose(): void
+-  /** Every native tab bound to a path (see {@link SidebarSurface.pathTabs}). */
++  /** Every native tab associated with a path. */
+   pathTabs(): NativePathTab[]
+ }
+ 
+-/** The native controller, probed at call time (the service can arrive late). */
+-function controllerOf(ctx: Context): NativeController | undefined {
+-  try {
+-    return ctx.get('sidebarRight') as unknown as NativeController | undefined
+-  } catch {
+-    return undefined
+-  }
++/** Read the optional controller at the time of an operation. */
++function controllerOf(ctx: Context): ISidebarRight | undefined {
++  return ctx.get('sidebarRight')
+ }
+ 
+ /**
+- * The on-screen-session feed, as anything outside this module should read it.
+- *
+- * The session-list snapshot carries NO current-session field in any DSH
+- * release (0.1.6 and 0.1.7 both publish only `ids` / `byId` / `phase` plus
+- * projections), so a read of one was always `undefined`: `mounted` is the
+- * only sanctioned source, and the plugin's own type invented the field it
+- * used to read.
+- *
+- * The probe tolerates a host without `mounted` (or a controller the runtime
+- * has not provided yet — the seat race this plugin already hit once on
+- * 0.1.5): the session list then doubles as the change pulse, so a late
+- * service is still picked up on the next list publish instead of never.
+- *
+- * @param ctx - the client context.
+- * @returns the observable face of the mounted seat's session id.
++ * Observe the on-screen Session; the list also discovers a late controller.
++ * @param ctx - client context.
++ * @returns current Session observation.
+  */
+ export function mountedSessions(ctx: Context): MountedSessions {
+   return {
+-    getSnapshot: () => {
+-      try {
+-        const mounted = controllerOf(ctx)?.mounted
+-        return typeof mounted?.getSnapshot === 'function' ? mounted.getSnapshot() : undefined
+-      } catch {
+-        return undefined
+-      }
+-    },
+-    subscribe: (listener) => {
+-      const mounted = controllerOf(ctx)?.mounted
+-      return typeof mounted?.subscribe === 'function'
+-        ? mounted.subscribe(listener)
+-        : ctx.sessions.list.subscribe(listener)
++    getSnapshot: () => controllerOf(ctx)?.mounted.getSnapshot(),
++    subscribe: listener => {
++      let stopMounted = controllerOf(ctx)?.mounted.subscribe(listener)
++      const stopList = ctx.sessions.list.subscribe(() => {
++        stopMounted ??= controllerOf(ctx)?.mounted.subscribe(listener)
++        listener()
++      })
++      return () => { stopList(); stopMounted?.() }
+     },
+   }
+ }
+ 
+ /**
+- * The session whose seat is on screen, or `undefined` — no seat is mounted
+- * (global panel, column not mounted) or the host has no mounted feed. Callers
+- * treat `undefined` as "not this session": nothing the plugin draws belongs to
+- * that surface, so it must neither write into it nor manage its column.
+- *
+- * @param ctx - the client context.
+- * @returns the on-screen session id, when there is one.
++ * Read the Session whose native panel is on screen.
++ * @param ctx - client context.
++ * @returns on-screen Session, or undefined.
+  */
+ export function mountedSessionId(ctx: Context): string | undefined {
+-  return mountedSessions(ctx).getSnapshot()
++  return controllerOf(ctx)?.mounted.getSnapshot()
+ }
+ 
+ /**
+- * Bind the plugin's write face to the native controller.
+- * @param ctx - the client context (session list + `ctx.sidebarRight`).
+- * @param records - the plugin's native tab record registry.
+- * @returns the surface, plus a disposer unbinding its two feed subscriptions.
++ * Bind native records to Session-targeted controller operations.
++ * @param ctx - client context.
++ * @param records - per-Session tab records.
++ * @returns surface with observer cleanup.
+  */
+ export function createNativeSurface(ctx: Context, records: NativeTabRecords): NativeSurface {
+   const pending: Pending[] = []
+-  const controller = (): NativeController | undefined => controllerOf(ctx)
+-
+   const place = (entry: Pending): boolean => {
+-    const api = controller()
++    const api = controllerOf(ctx)
+     if (api === undefined) return false
+-    const onScreen = mountedSessionId(ctx) === entry.sessionId
+-    if (entry.kind === 'tab') {
+-      const options = {
+-        params: entry.params,
+-        revealIfOpened: entry.revealIfOpened,
+-        ...(entry.preferNewPane ? { preferNewPane: true } : {}),
+-      }
+-      if (onScreen) {
+-        api.openTab(entry.tabKind, options)
+-        return true
+-      }
+-      // Do not hand a non-current session's open to openTabIn(): for a session
+-      // whose rightbar store the runtime never adopted (it was not opened since
+-      // this page load) that call is a silent no-op that reports nothing back, so
+-      // trusting it drops the open instead of queueing it as this module
+-      // documents. Leave the entry queued — flushPending() replays it once that
+-      // session comes on screen.
+-      return false
+-    }
+     const options = {
+-      ...(entry.line === undefined ? {} : { params: { line: entry.line } }),
+       revealIfOpened: entry.revealIfOpened,
+       ...(entry.preferNewPane ? { preferNewPane: true } : {}),
+     }
+-    if (onScreen) {
+-      api.openResource(entry.address, options)
+-      return true
+-    }
+-    // Same as the tab branch: a session with no adopted rightbar store makes
+-    // openResourceIn() a silent no-op, so queue instead.
+-    return false
++    const sessionId = SessionId(entry.sessionId)
++    return entry.kind === 'tab'
++      ? api.openTabIn(sessionId, brandString<NativeTabKind>(entry.tabKind), { ...options, params: entry.params })
++      : api.openResourceIn(sessionId, entry.address, {
++          ...options,
++          ...(entry.line === undefined ? {} : { params: { line: entry.line } }),
++        })
+   }
+-
+   const flushPending = (): void => {
+-    if (pending.length === 0) return
+-    for (let index = pending.length - 1; index >= 0; index--) {
+-      const entry = pending[index]
+-      if (entry !== undefined && place(entry)) pending.splice(index, 1)
+-    }
++    const retained = pending.filter(entry => !place(entry))
++    pending.splice(0, pending.length, ...retained)
+   }
+-
+   const enqueue = (entry: Pending): void => {
++    flushPending()
+     if (!place(entry)) pending.push(entry)
+   }
+-
+-  /**
+-   * The seat session a bare tab id belongs to.
+-   *
+-   * The public write face speaks ids without sessions (its consumer contract),
+-   * while records are per seat session — the same native id names a tab in
+-   * EVERY session. The mounted seat answers for a caller acting on what is on
+-   * screen; with no seat mounted (a global panel) a unique match across the
+-   * live sessions still resolves, and an id that names a tab in more than one
+-   * session resolves to none — guessing would write into another conversation.
+-   * @param tabId - the native tab id.
+-   * @param sessionId - the explicit session, when the caller has one.
+-   * @returns the owning session, or undefined.
+-   */
+   const sessionOf = (tabId: string, sessionId?: string): string | undefined => {
+     if (sessionId !== undefined) return records.has(sessionId, tabId) ? sessionId : undefined
+     const mounted = mountedSessionId(ctx)
+     if (mounted !== undefined && records.has(mounted, tabId)) return mounted
+-    const byId = ctx.sessions.list.getSnapshot().byId ?? {}
+     let found: string | undefined
+-    for (const candidate of Object.keys(byId)) {
++    for (const candidate of Object.keys(ctx.sessions.list.getSnapshot().byId)) {
+       if (!records.has(candidate, tabId)) continue
+-      if (found !== undefined && found !== candidate) return undefined
++      if (found !== undefined) return undefined
+       found = candidate
+     }
+     return found
+   }
+-
+-  /**
+-   * Forget the records of sessions that no longer exist.
+-   *
+-   * A `keepMounted` body survives until its tab or its session ends, and a
+-   * session the user DELETED never unmounts anything the plugin can hook, so
+-   * its records (and their tree/edit state) would live for the life of the
+-   * page. The mounted session is always kept: it can be missing from `byId`
+-   * for a moment while the list reloads.
+-   */
+   const evictGoneSessions = (): void => {
+-    try {
+-      const live = new Set(Object.keys(ctx.sessions.list.getSnapshot().byId ?? {}))
+-      const mounted = mountedSessionId(ctx)
+-      if (mounted !== undefined) live.add(mounted)
+-      records.retain(live)
+-    } catch {
+-      // A read failure is not evidence that sessions are gone; keep everything.
+-    }
++    const live = new Set(Object.keys(ctx.sessions.list.getSnapshot().byId))
++    const mounted = mountedSessionId(ctx)
++    if (mounted !== undefined) live.add(mounted)
++    records.retain(live)
+   }
+-
+-  // Two feeds flush the queue: the mounted seat (a session coming on screen)
+-  // and the session list, which also stays the pulse that picks the native
+-  // service up when it is provided after this surface was created. The list
+-  // pulse additionally reclaims the records of sessions that are gone.
+-  let mountedUnsubscribe: (() => void) | undefined
+-  const onListChange = (): void => {
+-    if (mountedUnsubscribe === undefined) {
+-      const mounted = controller()?.mounted
+-      if (typeof mounted?.subscribe === 'function') mountedUnsubscribe = mounted.subscribe(flushPending)
+-    }
++  let stopAdoption = controllerOf(ctx)?.onSessionAdopted(flushPending)
++  const stopList = ctx.sessions.list.subscribe(() => {
++    stopAdoption ??= controllerOf(ctx)?.onSessionAdopted(flushPending)
+     flushPending()
+     evictGoneSessions()
+-  }
+-  const unsubscribeList = ctx.sessions.list.subscribe(onListChange)
++  })
++  const stopMounted = mountedSessions(ctx).subscribe(flushPending)
+   evictGoneSessions()
+   return {
+     openTab({ sessionId, kind, params, revealIfOpened, preferNewPane }) {
+@@ -257,34 +132,13 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
+     openResource({ sessionId, address, line, revealIfOpened, preferNewPane }) {
+       enqueue({ kind: 'resource', sessionId, address, line, revealIfOpened, preferNewPane: preferNewPane === true })
+     },
+-    fileAddress(sessionId, cwd, path) {
+-      // The address's base is the session's stored header cwd — the value the
+-      // HOST builds and reads its own addresses with — not whatever root the
+-      // caller holds: `service.openTab` passes the scope the caller had, which
+-      // after #802 is usually the ACTIVE worktree, and an address built on
+-      // that base neither dedupes against the chat's own address for the same
+-      // file nor re-resolves the same way. See `src/client/address-base.ts`;
+-      // the caller's cwd stays as the fallback for a session whose cwd the
+-      // list does not know.
+-      return fileAddressFor(sessionId, addressBaseOf(ctx, sessionId) ?? cwd, path)
+-    },
+-    tabTypeOf(sessionId, tabId) {
+-      // Read through the SESSION, like `close` above: one native id names a
+-      // tab in every session, so a bare read can hand back another session's
+-      // record and clear the wrong session's unread mark.
+-      return records.get(sessionId, tabId)?.tab.type
+-    },
++    fileAddress: (sessionId, cwd, path) => fileAddressFor(sessionId, addressBaseOf(ctx, sessionId) ?? cwd, path),
++    tabTypeOf: (sessionId, tabId) => records.get(sessionId, tabId)?.tab.type,
+     close(sessionId, tabId) {
+-      // Read through the SESSION: the same native id names a tab in every
+-      // session, so a bare read can hand back another session's record.
+       const record = records.get(sessionId, tabId)
+       if (record === undefined) return undefined
+       records.drop(sessionId, tabId)
+-      const api = controller()
+-      if (api !== undefined) {
+-        if (sessionId === mountedSessionId(ctx)) api.close(tabId)
+-        else if (api.closeIn !== undefined) api.closeIn(sessionId, tabId)
+-      }
++      controllerOf(ctx)?.closeIn(SessionId(sessionId), brandString<TabId>(tabId))
+       return {
+         type: record.tab.type,
+         title: record.tab.title,
+@@ -298,19 +152,14 @@ export function createNativeSurface(ctx: Context, records: NativeTabRecords): Na
+       return true
+     },
+     activate(tabId, sessionId) {
+-      // External plugin tabs (multi-instance kinds like side chats) carry no
+-      // (kind, address) identity to re-open against, so "open again to focus"
+-      // cannot work for them — focus through the controller's own face.
+-      if (sessionOf(tabId, sessionId) === undefined) return false
+-      controller()?.focus?.(tabId)
++      const owner = sessionOf(tabId, sessionId)
++      if (owner === undefined || owner !== mountedSessionId(ctx)) return false
++      controllerOf(ctx)?.focus(brandString<TabId>(tabId))
+       return true
+     },
+     has: (tabId, sessionId) => sessionOf(tabId, sessionId) !== undefined,
+     pathTabs: () => records.pathTabs(),
+     flushPending,
+-    dispose: () => {
+-      unsubscribeList()
+-      mountedUnsubscribe?.()
+-    },
++    dispose: () => { stopList(); stopAdoption?.(); stopMounted(); pending.length = 0 },
+   }
+ }
+diff --git a/src/client/native/tab-adapter.tsx b/src/client/native/tab-adapter.tsx
+index b895b47..e39db20 100644
+--- a/src/client/native/tab-adapter.tsx
++++ b/src/client/native/tab-adapter.tsx
+@@ -24,6 +24,7 @@
+  * activation and handed to every registration.
+  */
+ import { createElement, useEffect, useSyncExternalStore } from 'react'
++import type { TabId, SidebarRightTabActions } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+ import type { ComponentType, ReactNode } from 'react'
+ import type { Context } from '../../context-types.ts'
+ import type { SessionScope } from '../api.ts'
+@@ -32,6 +33,7 @@ import { OrphanedTab } from '../OrphanedTab.tsx'
+ import { ContextDiagnosticsHost } from '../context-diagnostics-ui.tsx'
+ import type { ContextDiagnostics } from '../context-diagnostics.ts'
+ import { referenceInChat } from '../reference-in-chat.ts'
++import { fileAddressFor } from '../resource-address.ts'
+ import { useSessionRoot } from '../use-session-root.ts'
+ import { useSessionScope } from '../session-scope.ts'
+ import type { BetterSidebarService, NativePathTab } from '../service.ts'
+@@ -68,7 +70,7 @@ export interface NativeTabParams {
+ /** The native tab information this adapter reads (structural mirror of `useTabInfo`). */
+ export interface NativeTabInfo {
+   readonly tab: {
+-    readonly id: string
++    readonly id: TabId
+     readonly kind: string
+     readonly title: string
+     readonly contentId: string
+@@ -79,6 +81,7 @@ export interface NativeTabInfo {
+       readonly revision: number
+     }
+     readonly signal: AbortSignal
++    readonly actions: Pick<SidebarRightTabActions, 'openResource'>
+   }
+ }
+ 
+@@ -474,6 +477,29 @@ function useRecordVersion(records: NativeTabRecords, sessionId: string, id: stri
+   )
+ }
+ 
++/**
++ * Open one path through the native tab occurrence that owns the gesture.
++ * @param info - the native tab and its Session-bound actions.
++ * @param sessionId - the Session whose workspace resolves the path.
++ * @param cwd - that Session's workspace root.
++ * @param path - an absolute or workspace-relative file path.
++ * @param placement - whether the resource reveals a tab, replaces this tab, or opens beside it.
++ */
++export function openNativeFile(
++  info: NativeTabInfo,
++  sessionId: string,
++  cwd: string | undefined,
++  path: string,
++  placement: 'tab' | 'replace' | 'side',
++): void {
++  const options = placement === 'replace' && info.tab.kind !== 'files'
++    ? { replaceTab: true, revealIfOpened: false }
++    : placement === 'side'
++      ? { toSide: true, revealIfOpened: false }
++      : { revealIfOpened: true }
++  info.tab.actions.openResource(fileAddressFor(sessionId, cwd, path), options)
++}
++
+ /**
+  * One plugin tab rendered inside the native right Sidebar: the descriptor's
+  * own component with the plugin's props, over a synthetic record minted from
+@@ -562,6 +588,9 @@ export function NativeTabBody(props: NativeBodyInjected & NativeBodyFrameworkPro
+           revealed: view.revealed,
+           onToggleDir: (path: string) => { records.toggleExpanded(seatSessionId, nativeTab.id, path) },
+           onReferenceFile: (path: string, isDir: boolean) => { referenceInChat(ctx, scopeSessionId, path, isDir) },
++          onOpenFile: (path: string) => { openNativeFile(info, scopeSessionId, cwd, path, 'tab') },
++          onOpenFileInPlace: (path: string) => { openNativeFile(info, scopeSessionId, cwd, path, 'replace') },
++          onOpenFileSide: (path: string) => { openNativeFile(info, scopeSessionId, cwd, path, 'side') },
+           onOpenDiff: (tab: SidebarTab) => {
+             service.openTab({
+               type: 'diff',
+@@ -585,7 +614,6 @@ export interface NativeTitleInjected {
+   readonly service: BetterSidebarService
+   /** The descriptor id this title belongs to (one registration per descriptor). */
+   readonly descriptorId: string
+-  /**
+   /**
+    * The seat session this chip is drawn in. The strip renders BEFORE the pane
+    * body, and every session's retitled tabs live in the same registry, so the
+diff --git a/src/client/native/terminal-adapter.tsx b/src/client/native/terminal-adapter.tsx
+new file mode 100644
+index 0000000..374f1fd
+--- /dev/null
++++ b/src/client/native/terminal-adapter.tsx
+@@ -0,0 +1,99 @@
++/** Adapt DSH's terminal factory to the slot-hosted Better Sidebar workbench. */
++import type { ReactNode } from 'react'
++import { PluginArtworkTerminal } from '@deepseek-ai/dsh-client-ui-primitives'
++import type { TerminalSurfaceInputProps } from '@deepseek-ai/dsh-client-ui-sidebar-terminal/client'
++import { SessionId } from '@deepseek-ai/dsh-session/types'
++import type { Context } from '../../context-types.ts'
++import type { BetterSidebarService, TabComponentProps } from '../service.ts'
++import { allLeaves, type SidebarStore } from '../state.ts'
++import { t } from '../locales.ts'
++
++type TerminalSessionId = TerminalSurfaceInputProps['sessionId']
++
++interface TerminalControllerFace {
++  close(sessionId: TerminalSessionId, key: string, contentId: string): void
++  retainTab(tab: { sessionId: TerminalSessionId; tabId: string; contentId: string }): () => void
++}
++
++function contentIdOf(sessionId: string, tabId: string): string {
++  return `better-sidebar:${sessionId}:${tabId}`
++}
++
++function terminalController(ctx: Context): TerminalControllerFace | undefined {
++  return ctx.get('webTerminals') as TerminalControllerFace | undefined
++}
++
++/** Register the workbench terminal tab and retain every cached Session occurrence. */
++export function registerWorkbenchTerminal(ctx: Context, store: SidebarStore, service: BetterSidebarService): () => void {
++  const component = ({ scope, tab, visible, renderFactorySlot }: TabComponentProps): ReactNode => {
++    if (renderFactorySlot === undefined) return null
++    const replace = (): void => {
++      service.closeTab(tab.id, scope)
++      service.openTab({ type: 'terminal' }, scope)
++    }
++    const input: TerminalSurfaceInputProps = {
++      sessionId: SessionId(scope.sessionId),
++      tabId: tab.id,
++      contentId: contentIdOf(scope.sessionId, tab.id),
++      visible,
++      replace,
++    }
++    return renderFactorySlot('terminal.surface', input)
++  }
++  const disposeDescriptor = service.registerTab({
++    id: 'terminal',
++    title: () => t('terminal'),
++    description: () => t('guideDescTerminal'),
++    icon: size => <PluginArtworkTerminal size={size} />,
++    order: 40,
++    native: false,
++    available: () => terminalController(ctx) !== undefined,
++    createTab: () => ({
++      tab: {
++        id: `terminal:${crypto.randomUUID()}`,
++        type: 'terminal',
++        title: t('terminal'),
++      },
++    }),
++    onClose: (tab, scope) => {
++      terminalController(ctx)?.close(SessionId(scope.sessionId), tab.id, contentIdOf(scope.sessionId, tab.id))
++    },
++    component,
++  })
++  const seat = ctx.inject(['webTerminals'], () => {
++    const terminals = terminalController(ctx)
++    if (terminals === undefined) return
++    const holds = new Map<string, () => void>()
++    const syncHolds = (): void => {
++      const wanted = new Set<string>()
++      for (const [sessionId, state] of store.getSessionStates()) {
++        for (const leaf of allLeaves(state.bottomSplits)) {
++          for (const tab of leaf.tabs) {
++            if (tab.type !== 'terminal') continue
++            const contentId = contentIdOf(sessionId, tab.id)
++            wanted.add(contentId)
++            if (!holds.has(contentId)) {
++              holds.set(contentId, terminals.retainTab({ sessionId: SessionId(sessionId), tabId: tab.id, contentId }))
++            }
++          }
++        }
++      }
++      for (const [contentId, release] of holds) {
++        if (wanted.has(contentId)) continue
++        release()
++        holds.delete(contentId)
++      }
++    }
++    const unsubscribe = store.subscribe(syncHolds)
++    syncHolds()
++    return () => {
++      unsubscribe()
++      for (const release of holds.values()) release()
++      holds.clear()
++    }
++  })
++  return () => {
++    void seat.dispose()
++    disposeDescriptor()
++  }
++}
+diff --git a/src/client/prefs.ts b/src/client/prefs.ts
+index 54bdfa1..a6a26fb 100644
+--- a/src/client/prefs.ts
++++ b/src/client/prefs.ts
+@@ -239,13 +239,18 @@ export async function loadExternalDisable(settings: SidebarSettingsClient): Prom
+ export interface BootDecision {
+   prefs: SidebarPrefs
+   suspended: boolean
++  presentation: 'portal' | 'slot'
+ }
+ 
+ export async function loadBootDecision(settings: SidebarSettingsClient): Promise<BootDecision> {
+   try {
+     const view = await settings.settingsGet()
+-    return { prefs: parsePrefs(view.value), suspended: view.externalDisable === true }
++    return {
++      prefs: parsePrefs(view.value),
++      suspended: view.externalDisable === true,
++      presentation: view.presentation === 'slot' ? 'slot' : 'portal',
++    }
+   } catch {
+-    return { prefs: { ...SIDEBAR_PREFS_DEFAULTS }, suspended: false }
++    return { prefs: { ...SIDEBAR_PREFS_DEFAULTS }, suspended: false, presentation: 'portal' }
+   }
+ }
+diff --git a/src/client/service.ts b/src/client/service.ts
+index 02a9e38..f8e3e4c 100644
+--- a/src/client/service.ts
++++ b/src/client/service.ts
+@@ -19,7 +19,9 @@
+  *   per descriptor it tries `detect` first (when `head` bytes are given),
+  *   then `exts`; `exts: []` is a catch-all that matches any path.
+  */
++import { brandString, type Branded } from '@deepseek-ai/dsh-brand'
+ import type { ReactNode } from 'react'
++import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots'
+ import type { Context } from '../context-types.ts'
+ import {
+   activateTab as activateTabReducer, allLeaves, closeTab as closeTabReducer,
+@@ -29,6 +31,7 @@ import {
+ import { baseName, extOf } from './paths.ts'
+ import { hostRouteUrl as resolveHostRoute } from './host-route-url.ts'
+ import { builtinFileIcon, builtinFolderIcon } from './file-icons.tsx'
++import { isNativeDocumentPath } from './native/file-types.ts'
+ import type { SessionScope } from './api.ts'
+ import type { SidebarPrefs } from '../prefs-shared.ts'
+ import { bindSidechatSurfaces, type SidechatSurfaceAdapter } from './sidechat-surface.ts'
+@@ -169,13 +172,20 @@ export interface TabComponentProps {
+   tab: SidebarTab
+   /** Whether this tab is the active one AND the panel is open (live views pause otherwise). */
+   visible: boolean
++  /** Reusable DSH UI factories available when the workbench is slot-hosted. */
++  renderFactorySlot?: RenderFactorySlot
+   /** The explorer's expanded directory set (ExplorerView). */
+   expanded?: string[]
+   /** The explorer's reveal-highlight set (ExplorerView; "Show in folder" targets). */
+   revealed?: string[]
+   onToggleDir?: (path: string) => void
+   onReferenceFile?: (path: string, isDir: boolean) => void
++  /** Open a file as another native resource tab in this tab's Session. */
+   onOpenFile?: (path: string) => void
++  /** Replace this native tab with a file resource in the same Session. */
++  onOpenFileInPlace?: (path: string) => void
++  /** Open a file resource in a new pane beside this native tab. */
++  onOpenFileSide?: (path: string) => void
+   onOpenDiff?: (tab: SidebarTab) => void
+   onSubagentJump?: (childSessionId: string) => void
+ }
+@@ -201,6 +211,8 @@ export interface TabDescriptor {
+   order?: number
+   /** Hide from the + menu (the editor tab is opened by file-open, not by the menu). */
+   hidden?: boolean
++  /** Register this type in DSH's native right Sidebar; defaults to true. */
++  native?: boolean
+   /**
+    * Bottom-workbench-only type (v0.26.0+): offered in the plugin's OWN bottom
+    * + menu and nowhere else. Without this flag every registered type also
+@@ -612,6 +624,8 @@ export const FOLDER_OPEN_EXT = 'folder-open' as const
+ /** One `openTab` request. */
+ export interface OpenTabSeed {
+   type: string
++  /** Whether this open follows an explicit user gesture or updates a hidden workbench in the background. */
++  intent?: 'user' | 'background'
+   /** Overrides the descriptor's title when given (the editor tab shows the file name). */
+   title?: string
+   /**
+@@ -684,6 +698,9 @@ export interface NativeTabParams {
+   meta?: unknown
+ }
+ 
++/** A registered sidebar descriptor's native page kind, including the editor's files alias. */
++export type NativeTabKind = Branded<'BetterSidebarNativeTabKind'>
++
+ /**
+  * One native tab that carries a file path, as {@link SidebarSurface.pathTabs}
+  * reports it. The right column's records live in the native adapter and are
+@@ -936,7 +953,7 @@ export interface BetterSidebarService {
+    * line (a quote chip's click-through); `options.lineEnd` extends the
+    * landing flash through that line, so the quoted span reads at a glance.
+    */
+-  openFile(scope: SessionScope, path: string, title?: string, options?: { line?: number; lineEnd?: number }): void
++  openFile(scope: SessionScope, path: string, title?: string, options?: { line?: number; lineEnd?: number; intent?: 'user' | 'background' }): void
+   /**
+    * Resolve one of the plugin's own host routes (`sidebar/api/fs.read`) into
+    * an absolute URL the page can fetch even when the GUI is served under a
+@@ -1075,12 +1092,27 @@ function safeCall(fn: () => void): void {
+   }
+ }
+ 
++interface BetterSidebarServiceOptions {
++  /** Route ordinary opens into the workbench; PDF and Office files retain their native readers. */
++  readonly preferWorkbench?: () => boolean
++  /** Notify a product coordinator after a current-Session open resolves. */
++  readonly onOpenIntent?: (intent: 'user' | 'background') => void
++  /** Report a current-Session document open so the product can reveal its reader for user intent. */
++  readonly onNativeDocumentOpen?: (intent: 'user' | 'background') => void
++}
++
+ /**
+  * Create one BetterSidebar service bound to a store. The service owns the
+  * tab/viewer registries (Map + listener set) and proxies openTab/closeTab
+  * to the store's reducer. One instance per client plugin activation.
++ * @param store - Activation-owned sidebar state.
++ * @param options - Optional product presentation routing.
++ * @returns the public Better Sidebar service.
+  */
+-export function createBetterSidebarService(store: SidebarStore): BetterSidebarService {
++export function createBetterSidebarService(
++  store: SidebarStore,
++  options: BetterSidebarServiceOptions = {},
++): BetterSidebarService {
+   const tabs = new Map<string, TabDescriptor>()
+   const viewers = new Map<string, FileViewerDescriptor>()
+   const fileIcons = new Map<string, FileIconDescriptor>()
+@@ -1329,6 +1361,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+   }
+ 
+   const openTab = (seed: OpenTabSeed, scope?: SessionScope): void => {
++    const intent = seed.intent ?? 'user'
+     // A type the user disabled in settings never opens — neither from the
+     // + menu nor from derived flows (file opens, subagent auto-open,
+     // external plugins). Already-open tabs keep rendering.
+@@ -1343,6 +1376,12 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+     const targetSessionId = scope?.sessionId ?? store.getSnapshot().sessionId
+     if (targetSessionId === undefined) return
+     const callbackScope: SessionScope = scope ?? { sessionId: targetSessionId }
++    const activeSessionId = store.getSnapshot().sessionId
++    const targetsInactiveSession = scope !== undefined && scope.sessionId !== activeSessionId
++    const isDirectory = typeof seed.meta === 'object' && seed.meta !== null && 'dir' in seed.meta && seed.meta.dir === true
++    const nativeDocument = seed.type === 'editor' && seed.path !== undefined && !isDirectory
++      && isNativeDocumentPath(seed.path)
++    const preferWorkbench = options.preferWorkbench?.() === true
+     // ── Native right Sidebar ──────────────────────────────────────────────
+     // With the native surface installed, every open except an explicit
+     // bottom-panel one — and except a `bottomOnly` type, which has no native
+@@ -1355,7 +1394,9 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+     // component state, not a file to open — and rides the seed (path
+     // included) as navigation params, which the tab adapter merges onto the
+     // synthetic record's `tab.path` for the registered component.
+-    if (surface !== undefined && seed.target !== 'bottom' && descriptor.bottomOnly !== true) {
++    if (surface !== undefined && descriptor.bottomOnly !== true
++      && ((preferWorkbench && (nativeDocument || seed.target === 'right' || seed.target === 'side'))
++        || (seed.target !== 'bottom' && !preferWorkbench))) {
+       // "Open to the side" asks the host for a NEW pane instead of reusing
+       // the pane the acting tab lives in. `revealIfOpened: false` permits a
+       // duplicate of an already-open resource, so the split really happens
+@@ -1379,7 +1420,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+       // does (it is a split beside the reader's page), and a background
+       // activation asks for the same without the split (`reveal: false`),
+       // which is what keeps a gated auto-open from taking the column over.
+-      const reveal = seed.reveal !== false && !side
++      const reveal = seed.reveal !== false && intent === 'user' && !side
+       // A url seed lands on `path`: the browser tab reads its address from
+       // there and persists navigations back to the same field
+       // (BrowserView's `persist`), so dropping the seed left an opened tab
+@@ -1423,7 +1464,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+         // the editor, so the registered component never mounted).
+         surface.openTab({
+           sessionId: targetSessionId,
+-          kind: seed.type,
++          kind: brandString<NativeTabKind>(seed.type),
+           params: {
+             title,
+             ...(seed.path === undefined ? {} : { path: seed.path }),
+@@ -1438,13 +1479,15 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+       // The native surface reports one open event, not create-vs-focus, so a
+       // lifecycle consumer hears onOpen (documented in the guide).
+       safeCall(() => descriptor.onOpen?.(synthetic, callbackScope))
++      if (!targetsInactiveSession) {
++        options.onOpenIntent?.(intent)
++        if (nativeDocument) options.onNativeDocumentOpen?.(intent)
++      }
+       return
+     }
+     // Whether this open targets a session that is NOT the one on screen: a
+     // targeted open must not auto-expand panels the user cannot see (the
+     // expansion is about landing "in sight" for the CURRENT viewer).
+-    const activeSessionId = store.getSnapshot().sessionId
+-    const targetsInactiveSession = scope !== undefined && scope.sessionId !== activeSessionId
+     // Lifecycle capture: `created` when the open minted a NEW tab (a
+     // dedupe/id-safety-net focus is an ACTIVATION, not an open).
+     let created: SidebarTab | undefined
+@@ -1536,6 +1579,7 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+     }
+     if (created !== undefined) safeCall(() => descriptor.onOpen?.(created!, callbackScope))
+     else if (activated !== undefined) safeCall(() => descriptor.onActivate?.(activated!, callbackScope))
++    if (!targetsInactiveSession && (created !== undefined || activated !== undefined)) options.onOpenIntent?.(intent)
+   }
+ 
+   /**
+@@ -1677,13 +1721,14 @@ export function createBetterSidebarService(store: SidebarStore): BetterSidebarSe
+    *  in line-target.ts — the host's resource parameter map declares `line`
+    *  only, and smuggling a second key through host-owned params would work
+    *  exactly until upstream tightened that shape. */
+-  const openFile = (scope: SessionScope, path: string, title?: string, options?: { line?: number; lineEnd?: number }): void => {
++  const openFile = (scope: SessionScope, path: string, title?: string, options?: { line?: number; lineEnd?: number; intent?: 'user' | 'background' }): void => {
+     if (options?.line !== undefined) armLineEnd(path, options.line, options.lineEnd)
+     openTab({
+       type: 'editor',
+       title: title ?? baseNameOf(path),
+       path,
+       id: `editor:${path}`,
++      intent: options?.intent,
+       ...(options?.line === undefined ? {} : { line: options.line }),
+     }, scope)
+   }
+diff --git a/src/client/sidebar/TabContent.tsx b/src/client/sidebar/TabContent.tsx
+index 5dc1887..539b6a5 100644
+--- a/src/client/sidebar/TabContent.tsx
++++ b/src/client/sidebar/TabContent.tsx
+@@ -6,6 +6,7 @@
+  */
+ import { createElement, memo } from 'react'
+ import type { Context } from '../../context-types.ts'
++import type { RenderFactorySlot } from '@deepseek-ai/dsh-client-ui-slots'
+ import type { SidebarState, SidebarStore, SidebarTab } from '../state.ts'
+ import type { SessionScope } from '../api.ts'
+ import { useSessionScope } from '../session-scope.ts'
+@@ -30,11 +31,12 @@ interface TabContentProps extends TabContentMemoKey {
+   onSubagentJump: (childSessionId: string) => void
+   /** Open a diff tab from the git panel (placement handled by the store). */
+   onOpenDiff: (tab: SidebarTab) => void
++  renderFactorySlot?: RenderFactorySlot
+ }
+ 
+ /** Render the content of one tab (dispatched by type). */
+ export const TabContent = memo(function TabContent(props: TabContentProps) {
+-  const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff } = props
++  const { tab, sessionId, cwd, expanded, revealed, onToggleDir, onReferenceFile, ctx, store, visible, onSubagentJump, onOpenDiff, renderFactorySlot } = props
+   // Stable by content (see session-scope.ts): a tab body keys its memos and
+   // effects off this object, so rebuilding it per render made every such
+   // dependency look changed whenever a COMPARED field moved — a directory
+@@ -50,7 +52,7 @@ export const TabContent = memo(function TabContent(props: TabContentProps) {
+     RenderBoundary,
+     { className: css.tabBoundaryError },
+     createElement(descriptor.component, {
+-      ctx, store, scope, tab, visible, expanded, revealed,
++      ctx, store, scope, tab, visible, expanded, revealed, renderFactorySlot,
+       onToggleDir, onReferenceFile, onOpenDiff, onSubagentJump,
+     }),
+   )
+@@ -61,7 +63,11 @@ export const TabContent = memo(function TabContent(props: TabContentProps) {
+  * a disabled row instead of hiding the option.
+  * Tabs the user disabled in the side card settings are filtered out
+  * entirely — re-enabling them is the settings page's job. */
+-export function buildNewTabOptions(state: SidebarState, ctx: Context, scope: SessionScope): NewTabOption[] {
++export function buildNewTabOptions(
++  state: SidebarState | undefined,
++  ctx: Context,
++  scope: SessionScope | undefined,
++): NewTabOption[] {
+   const service = ctx.get('betterSidebar')
+   if (service === undefined) return []
+   return service.getTabs()
+@@ -70,7 +76,7 @@ export function buildNewTabOptions(state: SidebarState, ctx: Context, scope: Ses
+     .map(d => ({
+       id: d.id,
+       label: typeof d.title === 'function' ? d.title() : d.title,
+-      disabled: !(d.available?.(ctx, scope, state) ?? true),
++      disabled: state === undefined || scope === undefined || !(d.available?.(ctx, scope, state) ?? true),
+       // 14 matches the compact + menu's icon slot (compactList .itemIcon).
+       icon: typeof d.icon === 'function' ? d.icon(14) : d.icon,
+     }))
+diff --git a/src/client/sidebar/use-center-column.ts b/src/client/sidebar/use-center-column.ts
+index 298bb31..ebbc3a4 100644
+--- a/src/client/sidebar/use-center-column.ts
++++ b/src/client/sidebar/use-center-column.ts
+@@ -23,6 +23,10 @@
+ import { useCallback, useEffect, useRef, useState } from 'react'
+ import { resolveCenterColumn } from '../center-column.ts'
+ 
++/**
++ * Track the live center column for the bottom panel.
++ * @param contained - Keep the bottom panel inside its slot host instead of spanning the app center.
++ */
+ export function useCenterColumn(
+   /** The bottom panel element: measureCenter writes its edges directly. */
+   bottomRef: { readonly current: HTMLDivElement | null },
+@@ -30,6 +34,7 @@ export function useCenterColumn(
+    *  panel re-runs the chain: a panel opened before the center column was
+    *  ever found must not stay invisible forever). */
+   bottomOpen: boolean | undefined,
++  contained = false,
+ ) {
+   const centerRectRef = useRef({ left: 0, right: 0 })
+   const [centerMeasured, setCenterMeasured] = useState(false)
+@@ -61,11 +66,11 @@ export function useCenterColumn(
+     centerRectRef.current = { left: rect.left, right: rect.right }
+     const bottom = bottomRef.current
+     if (bottom !== null) {
+-      bottom.style.setProperty('left', `${rect.left}px`)
+-      bottom.style.setProperty('right', `${window.innerWidth - rect.right}px`)
++      bottom.style.setProperty('left', contained ? '0px' : `${rect.left}px`)
++      bottom.style.setProperty('right', contained ? '0px' : `${window.innerWidth - rect.right}px`)
+     }
+     setCenterMeasured(prev => (prev ? prev : true))
+-  }, [bottomRef])
++  }, [bottomRef, contained])
+   useEffect(() => {
+     let disposed = false
+     let observer: ResizeObserver | undefined
+diff --git a/src/client/sidebar/use-host-feeds.ts b/src/client/sidebar/use-host-feeds.ts
+index 517e22e..db2a2fc 100644
+--- a/src/client/sidebar/use-host-feeds.ts
++++ b/src/client/sidebar/use-host-feeds.ts
+@@ -5,6 +5,7 @@
+  * jump-back). All of it reacts to the host's live feeds for the CURRENT
+  * session; the sidebar shell only consumes the returned jump-back ref.
+  */
++import type {} from '@deepseek-ai/dsh-client-ui-sidebar-browser/client'
+ import { useEffect, useRef } from 'react'
+ import type { Context, SidebarJobView, SidebarSessionList } from '../../context-types.ts'
+ import type { SidebarStore } from '../state.ts'
+@@ -15,6 +16,7 @@ import { detectNewJob } from '../subagent-jobs.ts'
+ import { clientJobs, useJobsSnapshot } from '../jobs-client.ts'
+ import { mountedSessionId } from '../native/surface.ts'
+ import { t } from '../locales.ts'
++import { isNativeDocumentPath } from '../native/file-types.ts'
+ 
+ /**
+  * Application-level heartbeat interval (ms) for the agent-opens socket. The
+@@ -129,7 +131,7 @@ function activateTasksPage(
+     if (shown !== undefined && shown.kind !== 'subagent') {
+       // The page is still created — the event is never dropped — but it lands
+       // in the background and raises the dot instead of the column.
+-      ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent'), reveal: false })
++      ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent'), reveal: false, intent: 'background' })
+       // The dot belongs to the session the work is in, which is the current
+       // one (the gate above proved this seat is the mounted session).
+       store.markUnread('subagent')
+@@ -142,7 +144,11 @@ function activateTasksPage(
+     // Only a column the user had COLLAPSED is put back: an expanded one is in
+     // use, and closing it under the user would be worse than the takeover.
+     && column?.isExpanded?.() === false
+-  ctx.get('betterSidebar')?.openTab({ type: 'subagent', title: t('subagent') })
++  ctx.get('betterSidebar')?.openTab({
++    type: 'subagent',
++    title: t('subagent'),
++    intent: options.background ? 'background' : 'user',
++  })
+   if (park) column?.toggleExpanded?.()
+ }
+ 
+@@ -208,14 +214,15 @@ export function useHostFeeds(feeds: {
+           if (request.kind !== 'file' && request.kind !== 'folder' && request.kind !== 'url') return
+           if (typeof request.target !== 'string' || request.target === '') return
+           if (store.getPrefs().agentOpenTools !== true) return
+-          const scope = { sessionId }
++          const scope = { sessionId, cwd: ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd }
+           const title = typeof request.title === 'string' && request.title !== '' ? request.title : undefined
+           if (request.kind === 'url') {
+             // DSH's own browser tab type (absent from the plugin's registry
+             // since 0.20.0); an unregistered kind throws, so the agent-open
+             // path degrades to doing nothing rather than breaking the push.
+             try {
+-              ctx.get('sidebarRight')?.openTab('browser', { params: { url: request.target } })
++              const browser = ctx.get('sidebarRight')
++              browser?.openTab('browser', { params: { url: request.target } })
+             } catch {
+               // Host without a browser tab type: nothing to open into.
+             }
+@@ -226,9 +233,17 @@ export function useHostFeeds(feeds: {
+               path: request.target,
+               id: `editor:${request.target}`,
+               meta: { dir: true },
++              intent: 'background',
+             }, scope)
+           } else {
+-            ctx.get('betterSidebar')?.openFile(scope, request.target, title)
++            const column = ctx.get('sidebarRight')
++            const park = isNativeDocumentPath(request.target)
++              && mountedSessionId(ctx) === sessionId
++              && isNarrowWidth(window.innerWidth)
++              && column?.isExpanded() === false
++            ctx.get('betterSidebar')?.openFile(scope, request.target, title, { intent: 'background' })
++            // A native reader must not cover narrow-screen chat for a background open.
++            if (park && column?.isExpanded() === true) column.toggleExpanded()
+           }
+         } catch {
+           // Malformed push: ignore (the next push carries its own request).
+diff --git a/src/client/sidebar-file.ts b/src/client/sidebar-file.ts
+index b8149e8..cf6b6bd 100644
+--- a/src/client/sidebar-file.ts
++++ b/src/client/sidebar-file.ts
+@@ -43,11 +43,6 @@ interface NativeTabRegistryProbe {
+   candidates(address: string): readonly { readonly kind?: string }[]
+ }
+ 
+-/** The native controller slice used to hand an address to the type claiming it. */
+-interface NativeResourceOpener {
+-  openResource(address: string): void
+-}
+-
+ /**
+  * The tab type that would open `address` besides this plugin's own editor.
+  *
+@@ -100,20 +95,9 @@ export function claimingNativeKind(ctx: Context, address: string): string | unde
+ export function openClaimedNativeFile(ctx: Context, sessionId: string, cwd: string | undefined, path: string): boolean {
+   const address = fileAddressFor(sessionId, addressBaseOf(ctx, sessionId) ?? cwd, path)
+   if (claimingNativeKind(ctx, address) === undefined) return false
+-  let opener: NativeResourceOpener | undefined
+-  try {
+-    opener = ctx.get('sidebarRight') as unknown as NativeResourceOpener | undefined
+-  } catch {
+-    // The controller is probed, not injected: a host that has not provided
+-    // `sidebarRight` yet (or ever) leaves the file to the editor path below,
+-    // which the plugin's own surface wrapper can still queue until the host
+-    // service appears.
+-    opener = undefined
+-  }
+-  if (opener === undefined || typeof opener.openResource !== 'function') return false
+-  // No `kind` option: the host's own `claim(address)` re-runs the same
+-  // ranking the probe just read, so the claiming type's tab body renders.
+-  opener.openResource(address)
++  const service = ctx.get('betterSidebar')
++  if (service === undefined) return false
++  service.openTab({ type: 'editor', path, target: 'right' }, { sessionId, cwd })
+   return true
+ }
+ 
+@@ -162,5 +146,5 @@ export function openSidebarFile(
+     path: absolute,
+     id: `editor:${absolute}`,
+     ...(options.line === undefined ? {} : { line: options.line }),
+-  })
++  }, { sessionId, cwd: options.cwd ?? summary?.cwd })
+ }
+diff --git a/src/client/sidebar.module.css b/src/client/sidebar.module.css
+index e6bd1f5..017a9c9 100644
+--- a/src/client/sidebar.module.css
++++ b/src/client/sidebar.module.css
+@@ -145,6 +145,17 @@
+   left: 0;
+ }
+ 
++/* Desktop slot presentation is in-flow inside AppFrame's workbench column.
++   Narrow layouts report portal presentation and retain the overlay drawer. */
++:global([data-dsh-panel-host][data-dsh-presentation='slot']) {
++  position: relative;
++  inset: auto;
++  width: 100%;
++  height: 100%;
++  z-index: auto;
++  pointer-events: auto;
++}
++
+ /* The closed-state affordance is the native rail icon control: a plain
+    28px circle (the app's icon-button size — the cluster must stay inside
+    the 34px tab-strip band so it never covers the pane headers below),
+@@ -234,6 +245,15 @@
+     visibility 0s linear var(--ds-transition-duration-slow);
+ }
+ 
++/* The sole plugin-owned workbench becomes the full desktop slot after the
++   upstream native Sidebar owns the separate right column. */
++.bottomPanelSlot {
++  inset: 0;
++  transform: none;
++  visibility: visible;
++  border-top: 0;
++}
++
+ /* Height drags write at pointer cadence; easing would detach the edge. */
+ .bottomPanel[data-dragging] {
+   transition: none;
+@@ -305,6 +325,10 @@ body[data-dsh-sidebar-dragging] .bottomPanel {
+   padding-right: 40px;
+ }
+ 
++.bottomPanelSlot .tabBar {
++  padding-right: 0;
++}
++
+ /* ── Desktop drag-region opt-out ──────────────────────────────────────── */
+ 
+ /* Frameless desktop shells make the top strip of the web content draggable
+diff --git a/src/client/sidechat-transcript.ts b/src/client/sidechat-transcript.ts
+index f30913f..d941588 100644
+--- a/src/client/sidechat-transcript.ts
++++ b/src/client/sidechat-transcript.ts
+@@ -505,7 +505,7 @@ function resultAttachmentsOf(data: Record<string, unknown>): SidechatAttachment[
+ export function parseArgsObject(args: string | undefined): Record<string, unknown> | undefined {
+   if (args === undefined) return undefined
+   try {
+-    const parsed = JSON.parse(args) as unknown
++    const parsed: unknown = JSON.parse(args)
+     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined
+     return parsed as Record<string, unknown>
+   } catch {
+diff --git a/src/client/split-pane.tsx b/src/client/split-pane.tsx
+index cbdfb92..9779b53 100644
+--- a/src/client/split-pane.tsx
++++ b/src/client/split-pane.tsx
+@@ -114,7 +114,7 @@ function zoneAt(event: React.DragEvent, pane: HTMLElement): DropZone {
+  * An empty pane's welcome cards: the openable types as cards, clicked to
+  * open (instead of a bare "this pane is empty" message).
+  */
+-function PaneEmptyCards(props: {
++export function PaneEmptyCards(props: {
+   newTabOptions: NewTabOption[]
+   onNewTab: (optionId: string) => void
+ }) {
+diff --git a/src/client/state.ts b/src/client/state.ts
+index 1a05414..9a7198d 100644
+--- a/src/client/state.ts
++++ b/src/client/state.ts
+@@ -708,7 +708,7 @@ function loadState(sessionId: string): SidebarState {
+     try {
+       const raw = localStorage.getItem(`${STORAGE_PREFIX}:${sessionId}`)
+       if (raw !== null) {
+-        const parsed = JSON.parse(raw) as unknown
++        const parsed: unknown = JSON.parse(raw)
+         // Seed the uid counter past the persisted ids (it resets on reload);
+         // sanitize re-ids any duplicates the pre-seeding counter left behind.
+         nextIdCounter = maxCounterId(parsed)
+diff --git a/src/config.ts b/src/config.ts
+index 2ea6335..6cccc49 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -27,8 +27,13 @@ export {
+   type SidebarPrefs,
+ } from './prefs-shared.ts'
+ 
++/** Host placement selected by the product composition. */
++export type SidebarPresentation = 'portal' | 'slot'
++
+ /** Tunable sidebar host limits (every field optional; defaults fill in). */
+ export interface SidebarConfig {
++  /** Render in the viewport portal or product workbench slot. */
++  presentation?: SidebarPresentation
+   /** Explorer row bound of one level. */
+   listLimit?: number
+   /** Budget of ONE side-thread creation, milliseconds.
+@@ -56,6 +61,7 @@ export interface SidebarConfig {
+  * `workspaceFence` field in an old profile from being fatal).
+  */
+ const LimitsSchema = z.object({
++  presentation: z.union([z.const('portal'), z.const('slot')]).default('portal'),
+   listLimit: z.number().step(1).min(1).default(1000),
+   // Five seconds is below any real creation and ten minutes is the point where
+   // a stuck creation is better cancelled than waited on; an out-of-range or
+@@ -65,6 +71,7 @@ const LimitsSchema = z.object({
+ 
+ /** Fully defaulted sidebar host settings. */
+ export interface ResolvedSidebarConfig {
++  presentation: SidebarPresentation
+   listLimit: number
+   /** Budget of ONE side-thread creation, milliseconds. */
+   createTimeoutMs: number
+@@ -78,6 +85,7 @@ export interface ResolvedSidebarConfig {
+  */
+ export function resolveSidebarConfig(config: SidebarConfig | undefined): ResolvedSidebarConfig {
+   return {
++    presentation: config?.presentation ?? 'portal',
+     listLimit: config?.listLimit ?? 1000,
+     createTimeoutMs: config?.createTimeoutMs ?? 120_000,
+   }
+diff --git a/src/context-types.ts b/src/context-types.ts
+index c262242..6f3d5db 100644
+--- a/src/context-types.ts
++++ b/src/context-types.ts
+@@ -27,10 +27,11 @@
+  * `Context` in `TabComponentProps` and the `betterSidebar` augmentation),
+  * so a Node import here would leak into browser-only consumer builds. The
+  * webServer faces below are therefore structural mirrors with plain
+- * interfaces (the host casts to real Node types at the few boundaries that
+- * need them — e.g. the `ws` upgrade hook in src/index.ts).
++ * interfaces. The Host entry imports the webserver owner's type for upgrade
++ * handlers; that Node-specific declaration stays out of this shared file.
+  */
+ import type { Context as CordisContext } from '@deepseek-ai/cordis'
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ import type { BetterSidebarService } from './client/service.ts'
+ import type { ProcessActivitySummary } from './process-activity.ts'
+ 
+@@ -167,6 +168,8 @@ export interface SidebarSessionSummary {
+   parentId?: string
+   /** Whether the session's agent is currently running. */
+   running?: boolean
++  /** View retainers currently keeping the Session mounted. */
++  retainedBy?: { mainView?: number }
+ }
+ 
+ /** Durable parent/child address that selects subagent transport in the client. */
+@@ -624,7 +627,7 @@ export interface SidebarSessionsService {
+    * runtime ISessions.scope) — the ticket `ctx.conversation.input.for`
+    * requires to reach that session's composer.
+    */
+-  scope(id: string): Context | undefined
++  scope(id: SessionId): CordisContext | undefined
+   /**
+    * Open a healthy catalog child through its exact direct-parent address
+    * (mirror of the runtime ISessions.openSubagent).
+diff --git a/src/html-route.ts b/src/html-route.ts
+index f33eec6..f01b5dd 100644
+--- a/src/html-route.ts
++++ b/src/html-route.ts
+@@ -103,8 +103,7 @@ export function decodeHtmlUrl(pathname: string): HtmlDecodeResult {
+   } else if (/^[A-Za-z]:$/.test(tail[0] ?? '')) {
+     // A Windows drive segment ('D:') is the FIRST path segment of an encoded
+     // drive path. Rejoining it with a leading slash would yield '/D:/work/...'
+-    // which node's path.resolve() mangles into 'D:\D:\work\...' on Windows —
+-    // the html route's workspace fence would then reject every drive path.
++    // which node's path.resolve() mangles into 'D:\D:\work\...' on Windows.
+     // Keep the drive form slash-free so requireAbsolute() resolves it verbatim.
+     path = tail.join('/')
+   } else {
+diff --git a/src/index.ts b/src/index.ts
+index a6e26f3..c32b0d6 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1218,8 +1218,8 @@ function buildApi(
+     'settings.get': () => {
+       const settings = getSettings()
+       return settings === undefined
+-        ? { value: undefined, revision: undefined, externalDisable: false }
+-        : { ...settings.get(), externalDisable: settings.externalDisable() }
++        ? { value: undefined, revision: undefined, externalDisable: false, presentation: resolved.presentation }
++        : { ...settings.get(), externalDisable: settings.externalDisable(), presentation: resolved.presentation }
+     },
+     'settings.update': async (payload) => {
+       const settings = getSettings()
+diff --git a/src/wire.ts b/src/wire.ts
+index 950a98c..f62e86a 100644
+--- a/src/wire.ts
++++ b/src/wire.ts
+@@ -88,7 +88,8 @@ export async function readJsonBody(
+   const text = Buffer.concat(chunks).toString('utf8')
+   if (text.trim() === '') return {}
+   try {
+-    return JSON.parse(text) as unknown
++    const parsed: unknown = JSON.parse(text)
++    return parsed
+   } catch {
+     throw new SidebarError('bad-request', 'request body is not valid JSON')
+   }

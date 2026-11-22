@@ -468,8 +468,8 @@ function installReleaseCapabilities(root, productRuntimeRoot, capabilities, worl
   const harbor = capabilities.find(entry => entry.key === 'harborPlugin')
   assertHarborPythonReady(productRuntimeRoot, harbor.version, world, env)
   const pnpm = join(desktopRoot, '..', '..', 'node_modules', 'pnpm', 'bin', 'pnpm.mjs')
-  if (run(process.execPath, [pnpm, '--version'], { cwd: world, env }).trim() !== '11.7.0') {
-    throw new Error('release capability installation requires pnpm 11.7.0')
+  if (run(process.execPath, [pnpm, '--version'], { cwd: world, env }).trim() !== '11.28.5') {
+    throw new Error('release capability installation requires pnpm 11.28.5')
   }
   const bin = join(world, 'bin')
   mkdirSync(bin)
@@ -2116,7 +2116,13 @@ export function resolveSettingsConfig(schema, input) {
   return typeof parsed?.get === 'function' ? parsed.get() : parsed
 }
 
-async function verifyMarketplaceHostContract(root) {
+/**
+ * Exercise the installed marketplace schema and its operation-owned failure diagnostic.
+ * @param {string} root Installed product Harness.
+ * @param {string} world Private verification directory.
+ * @returns {Promise<void>}
+ */
+export async function verifyMarketplaceHostContract(root, world) {
   const entry = join(root, 'packages', 'product', 'plugin-marketplace', 'index.js')
   const marketplace = await import(`${pathToFileURL(entry).href}?verify=${Date.now()}`)
   const parsed = resolveSettingsConfig(marketplace.Config, {
@@ -2130,11 +2136,22 @@ async function verifyMarketplaceHostContract(root) {
   if (parsed.installState.pkg !== missingMarketplaceRepository) {
     throw new Error('Plugin Marketplace installState schema discarded its package identity')
   }
-  const diagnostic = marketplace.installFailureMessage({
-    code: 1,
-    stdout: 'ERR_PNPM_FETCH_404 GET https://registry.npmjs.org/missing-npm-package: Not Found - 404',
-    stderr: 'dsh: pnpm failed in profile directory /tmp/profile',
-  })
+  const management = await import(pathToFileURL(join(root, 'packages', 'product', 'plugin-marketplace', 'management.js')).href)
+  const profile = { name: 'marketplace-diagnostic', dir: join(world, 'marketplace-diagnostic') }
+  mkdirSync(profile.dir, { recursive: true })
+  writeFileSync(join(profile.dir, 'package.json'), '{"dependencies":{}}\n')
+  let diagnostic = ''
+  try {
+    await management.performOperation({ pkg: 'missing-npm-package' }, profile, {
+      execute: async () => ({
+        code: 1,
+        stdout: 'ERR_PNPM_FETCH_404 GET https://registry.npmjs.org/missing-npm-package: Not Found - 404',
+        stderr: 'dsh: pnpm failed in profile directory /tmp/profile',
+      }),
+    })
+  } catch (error) {
+    diagnostic = error.message
+  }
   if (!diagnostic.includes('ERR_PNPM_FETCH_404') || diagnostic.includes('profile directory')) {
     throw new Error(`Plugin Marketplace hid the actionable pnpm diagnostic: ${diagnostic}`)
   }
@@ -2165,7 +2182,7 @@ export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRo
     if (lockPeers !== installedPeers) {
       throw new Error(`product peer verification count changed after install: lock=${lockPeers}, installed=${installedPeers}`)
     }
-    await verifyMarketplaceHostContract(root)
+    await verifyMarketplaceHostContract(root, world)
     writeDocumentPreviewFixtures(world, options.documentFixtureDirectory)
     await runHostSmoke(root, productRuntimeRoot, desktopOverlayPath, world, lifetime, 'core')
     console.log(`verify-product-release: default product passed (${CORE_PRODUCT_CLIENT_IDS.length} product Clients, Codex default, lightweight browser, PDF/DOCX/PPTX/XLSX viewing and reopen in Chromium)`)

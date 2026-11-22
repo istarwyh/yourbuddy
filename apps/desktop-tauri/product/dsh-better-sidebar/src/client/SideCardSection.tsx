@@ -11,7 +11,11 @@
  *  - 侧边栏内容: one SMALL CARD per REGISTERED tab type (built-ins and
  *    external plugins alike), laid out in a responsive grid that wraps
  *    several cards per row — icon chip + title + type id, clicked to toggle
- *    the switch persisted in `prefs.tabsEnabled[id]`.
+ *    the switch persisted in `prefs.tabsEnabled[id]`. Programmatic-only
+ *    types (`hidden: true`, e.g. the built-in diff page or dsh-remote's
+ *    `dsh-remote:file`) are NOT listed: they have no + menu row and no
+ *    native guide entry, so a switch could only break their opens without
+ *    hiding anything (#1009).
  *  - 文件预览: one SMALL CARD per REGISTERED file viewer — icon chip + title
  *    + the extensions it covers, clicked to toggle `prefs.viewersEnabled[id]`.
  *
@@ -40,7 +44,7 @@
  * shows the wire error inline — a broken settings surface never crashes the
  * shell.
  */
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import {
   IconChevronDownOutlineRegular,
   IconPlusOutlineRegular,
@@ -53,18 +57,17 @@ import clsx from 'clsx'
 // Type-only: pulls the settings shell's SlotMap merges ('settings.section').
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import {
-  TITLE_BAR_STRIP_MAX,
-  TITLE_BAR_STRIP_MIN,
-  type SidebarPrefs,
-} from '../prefs-shared.ts'
+import type { SidebarPrefs } from '../prefs-shared.ts'
+import { Switch } from './Switch.tsx'
 import { api } from './api.ts'
 import { parsePrefs } from './prefs.ts'
 import { AddPluginModal, type PluginKind } from './add-plugin-modal.tsx'
 import { t } from './locales.ts'
-import { parseDesktopEnv } from './desktop-env.ts'
-import { getShellPreset, getShellPresets } from './shell-presets.ts'
 import type { SidebarStore } from './state.ts'
+import { mergeGuideEntries, type NativeGuideCatalog, type NativeGuideEntry } from './native/guide-catalog.ts'
+import { orderGuideEntries } from './native/guide-layout.ts'
+import { GuideOrderList } from './native/guide-order.tsx'
+import { GuideRowsInput } from './native/guide-rows.tsx'
 import type {
   BetterSidebarService,
   FileViewerDescriptor,
@@ -78,6 +81,8 @@ import css from './SideCardSection.module.css'
 export interface SideCardSectionInjected {
   store: SidebarStore
   service: BetterSidebarService
+  /** Live host guide cards; absent in harness renders that do not mount the start page. */
+  guideCatalog?: NativeGuideCatalog
 }
 
 /** Full section props: the runtime share plus the injected face. */
@@ -103,22 +108,22 @@ function iconOf(icon: ReactNode | ((size: number) => ReactNode) | undefined, siz
   return typeof icon === 'function' ? icon(size) : icon
 }
 
-/** Tab inventory order: hidden types (editor/diff) last, then + menu order. */
-function tabOrder(a: TabDescriptor, b: TabDescriptor): number {
-  if (a.hidden !== b.hidden) return a.hidden === true ? 1 : -1
-  return (a.order ?? 100) - (b.order ?? 100)
+/**
+ * The tab inventory: the types that actually reach the side card, in + menu
+ * order. `hidden` types are programmatic-only (no + menu row, no native
+ * guide entry), so they have no side-card presence to switch — listing them
+ * produced switches whose only observable effect was to refuse their own
+ * opens (#1009).
+ * @param tabs - the service's whole registry.
+ * @returns a sorted copy without the hidden types.
+ */
+function tabInventory(tabs: readonly TabDescriptor[]): TabDescriptor[] {
+  return tabs.filter(tab => tab.hidden !== true).sort((a, b) => (a.order ?? 100) - (b.order ?? 100))
 }
 
-/**
- * The scheme dropdown's current value: the plain scheme, or `preset:<id>`
- * while a preset is active. Falls back to `auto` when the stored preset id
- * is no longer registered (the strip resolves to 0 then anyway).
- */
-function titleBarSchemeValue(prefs: SidebarPrefs): string {
-  if (prefs.titleBarScheme !== 'preset') return prefs.titleBarScheme
-  const preset = getShellPreset(prefs.titleBarPresetId)
-  return preset !== undefined ? `preset:${preset.id}` : 'auto'
-}
+/** An empty, reference-stable guide inventory for harness renders without a catalog. */
+const EMPTY_GUIDE_ENTRIES: readonly NativeGuideEntry[] = []
+const NOOP_SUBSCRIBE = (): (() => void) => () => {}
 
 /** Viewer inventory order: priority desc (the catch-all `code` comes last). */
 function viewerOrder(a: FileViewerDescriptor, b: FileViewerDescriptor): number {
@@ -181,33 +186,6 @@ function SettingsRender(props: {
 }
 
 /**
- * The custom switch: a real checkbox (hidden, native semantics and focus)
- * driving a styled track/thumb. Used by the general toggle rows and the
- * secondary settings popup rows.
- */
-function Switch(props: {
-  checked: boolean
-  onChange: (next: boolean) => void
-  label: string
-}) {
-  const { checked, onChange, label } = props
-  return (
-    <label className={css.switch}>
-      <input
-        type="checkbox"
-        className={css.switchInput}
-        checked={checked}
-        aria-label={label}
-        onChange={event => { onChange(event.currentTarget.checked) }}
-      />
-      <span className={css.switchTrack} aria-hidden="true">
-        <span className={css.switchThumb} />
-      </span>
-    </label>
-  )
-}
-
-/**
  * The body of a feature's secondary settings popup: one row (title/desc +
  * control) per declared setting. Switches render the custom switch; text and
  * number rows render a free-form / numeric input committed on blur/Enter
@@ -226,6 +204,9 @@ export function FeatureSettingsRows(props: {
    *  of picked values (`multi: true`). Optional: rows with no handler are
    *  display-only. */
   onSelectValue?: (toggle: SidebarSettingToggle, next: unknown) => void
+  /** Commit one patterns row: the whole string list after an add/remove.
+   *  Optional: rows with no handler are display-only. */
+  onPatterns?: (toggle: SidebarSettingToggle, next: string[]) => void
   /** Explicit value source (v0.12.0+): when given, rows read their values
    *  from it instead of the `prefs` face — plugin-owned rows read their
    *  own blob, so a plugin key can never collide with (or silently read)
@@ -233,13 +214,24 @@ export function FeatureSettingsRows(props: {
    *  the latter collides with the inherited Object.prototype.valueOf.) */
   valueSource?: (key: string) => unknown
 }) {
-  const { toggles, prefs, onToggle, onCommit, onSelectValue, valueSource } = props
+  const { toggles, prefs, onToggle, onCommit, onSelectValue, onPatterns, valueSource } = props
   const prefValues: Readonly<Record<string, unknown>> = { ...prefs }
   const read = valueSource ?? ((key: string): unknown => prefValues[key])
   return (
     <div className={css.popupRows}>
       {toggles.map(toggle => {
         const title = textOf(toggle.title)
+        if (toggle.type === 'patterns') {
+          return (
+            <PatternsRow
+              key={toggle.key}
+              toggle={toggle}
+              title={title}
+              value={read(toggle.key)}
+              onPatterns={onPatterns}
+            />
+          )
+        }
         if (toggle.type === 'select') {
           return (
             <SelectRow
@@ -331,10 +323,10 @@ function TypedRow(props: {
   )
 }
 /**
- * The multi-line custom-CSS input (scheme `custom`): a monospace textarea
- * whose draft is local state, committed on blur or Cmd/Ctrl+Enter through
- * the parent's handler. Keyed by the stored value so an external commit
- * remounts it with the canonical text (same pattern as TypedRow).
+ * The multi-line custom-CSS input (the user-space escape hatch): a monospace
+ * textarea whose draft is local state, committed on blur or Cmd/Ctrl+Enter
+ * through the parent's handler. Keyed by the stored value so an external
+ * commit remounts it with the canonical text (same pattern as TypedRow).
  */
 function CssDraft(props: {
   value: string
@@ -367,8 +359,7 @@ function CssDraft(props: {
  * per option (big-icon cards when any option carries an icon). Single-pick
  * commits the option's value and closes; `multi` toggles membership and
  * commits the picked values as an array (in options order), staying open.
- * Shared by the declarative select rows (SelectRow) and the title-bar
- * scheme dropdown on the General row.
+ * Used by the declarative select rows (SelectRow).
  */
 function SelectMenu(props: {
   label: string
@@ -488,6 +479,76 @@ function SelectRow(props: {
 }
 
 /**
+ * One patterns row (`type: 'patterns'`): an editable string list — the
+ * committed values render as removable chips, and a permanently-present
+ * input adds new entries (Enter or the add button; blanks and duplicates
+ * are dropped). Every add/remove commits the WHOLE list through the
+ * parent's onPatterns — the list is one atomic pref value.
+ */
+function PatternsRow(props: {
+  toggle: SidebarSettingToggle
+  title: string
+  value: unknown
+  onPatterns?: (toggle: SidebarSettingToggle, next: string[]) => void
+}) {
+  const { toggle, title, value, onPatterns } = props
+  const patterns = Array.isArray(value) ? value.filter(item => typeof item === 'string') as string[] : []
+  const [draft, setDraft] = useState('')
+  const commitAdd = (): void => {
+    const next = draft.trim()
+    setDraft('')
+    if (next === '' || patterns.includes(next)) return
+    onPatterns?.(toggle, [...patterns, next])
+  }
+  return (
+    <div className={css.patternsRow}>
+      <span className={css.rowText}>
+        <span className={css.title}>{title}</span>
+        {textOf(toggle.desc) !== '' && <span className={css.desc}>{textOf(toggle.desc)}</span>}
+      </span>
+      {patterns.length > 0 && (
+        <div className={css.patternsChips}>
+          {patterns.map((pattern, index) => (
+            <span key={`${pattern}:${index}`} className={css.patternsChip}>
+              {pattern}
+              <button
+                type="button"
+                className={css.patternsChipRemove}
+                aria-label={`${t('explorerExcludeRemove')} ${pattern}`}
+                title={t('explorerExcludeRemove')}
+                onClick={() => { onPatterns?.(toggle, patterns.filter((_, at) => at !== index)) }}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className={css.patternsAdd}>
+        <Input
+          type="text"
+          className={css.patternsInput}
+          value={draft}
+          placeholder={toggle.patternsPlaceholder ?? toggle.placeholder}
+          aria-label={title}
+          spellCheck={false}
+          onChange={event => { setDraft(event.currentTarget.value) }}
+          onKeyDown={event => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              commitAdd()
+            }
+          }}
+        />
+        <button type="button" className={css.done} onClick={commitAdd}>
+          {t('explorerExcludeAdd')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
  * The secondary settings popup body of one feature (tab or viewer):
  * - the host-prefs `toggles` rows, then the plugin-owned `pluginToggles`
  *   rows (their values live in `pluginSettings[feature.id]`, projected onto
@@ -505,13 +566,15 @@ export function SettingsBody(props: {
   onToggle: (toggle: SidebarSettingToggle, next: boolean) => void
   onCommit: (toggle: SidebarSettingToggle, raw: string) => string
   onSelectValue: (toggle: SidebarSettingToggle, next: unknown) => void
+  onPatterns: (toggle: SidebarSettingToggle, next: string[]) => void
   onPluginToggle: (toggle: SidebarSettingToggle, next: boolean) => void
   onPluginCommit: (toggle: SidebarSettingToggle, raw: string) => string
   onPluginSelectValue: (toggle: SidebarSettingToggle, next: unknown) => void
+  onPluginPatterns: (toggle: SidebarSettingToggle, next: string[]) => void
   onPluginWrite: (key: string, value: unknown) => void
   onClose: () => void
 }) {
-  const { feature, prefs, store, service, onToggle, onCommit, onSelectValue, onPluginToggle, onPluginCommit, onPluginSelectValue, onPluginWrite, onClose } = props
+  const { feature, prefs, store, service, onToggle, onCommit, onSelectValue, onPatterns, onPluginToggle, onPluginCommit, onPluginSelectValue, onPluginPatterns, onPluginWrite, onClose } = props
   const render = feature.settings?.render
   const toggles = feature.settings?.toggles ?? []
   const pluginToggles = feature.settings?.pluginToggles ?? []
@@ -519,8 +582,16 @@ export function SettingsBody(props: {
   // Plugin rows read their values from the descriptor's OWN blob through
   // an explicit value source — no projection onto the prefs face, so a
   // plugin key can never collide with (or silently read) a host pref of
-  // the same name.
+  // the same name. A key the user never wrote falls back to the row's own
+  // declared `defaultValue` (filled in when the descriptor was registered):
+  // without it a fresh document shows "no value" for a feature that already
+  // behaves as its default.
   const pluginBlob = prefs.pluginSettings[feature.id] ?? {}
+  const readPluginValue = (key: string): unknown => {
+    const stored = pluginBlob[key]
+    if (stored !== undefined) return stored
+    return pluginToggles.find(row => row.key === key)?.defaultValue
+  }
   return (
     <div>
       {(toggles.length > 0 || pluginToggles.length > 0) && (
@@ -532,6 +603,7 @@ export function SettingsBody(props: {
               onToggle={onToggle}
               onCommit={onCommit}
               onSelectValue={onSelectValue}
+              onPatterns={onPatterns}
             />
           )}
           {pluginToggles.length > 0 && (
@@ -541,7 +613,8 @@ export function SettingsBody(props: {
               onToggle={onPluginToggle}
               onCommit={onPluginCommit}
               onSelectValue={onPluginSelectValue}
-              valueSource={(key) => pluginBlob[key]}
+              onPatterns={onPluginPatterns}
+              valueSource={readPluginValue}
             />
           )}
         </div>
@@ -568,17 +641,11 @@ export function SettingsBody(props: {
  * @param props - composed slot props (runtime share + injected store/service).
  * @returns the section element tree.
  */
-export function SideCardSection({ store, service }: SideCardSectionProps) {
+export function SideCardSection({ store, service, guideCatalog }: SideCardSectionProps) {
   const [prefs, setPrefs] = useState<SidebarPrefs>(() => store.getPrefs())
   const [error, setError] = useState<string | null>(null)
   // Which feature's secondary settings popup is open (null = closed).
   const [settingsFor, setSettingsFor] = useState<TabDescriptor | FileViewerDescriptor | null>(null)
-  // Whether the position-compat strip popup (the gear on the 常规 row) is open.
-  const [stripSettingsOpen, setStripSettingsOpen] = useState(false)
-  // The parsed desktop environment (URL stamps — see desktop-env.ts). Used
-  // ONLY to badge matching presets in the scheme dropdown ("已检测");
-  // nothing is auto-applied.
-  const detectedEnv = useMemo(() => parseDesktopEnv(), [])
   // Whether the "add plugin" modal (a dashed card at the end of the
   // 侧边栏内容 / 文件预览 grids) is open, and for which extension point
   // (null = closed).
@@ -595,12 +662,29 @@ export function SideCardSection({ store, service }: SideCardSectionProps) {
   // The declarative inventory: the registered tab types and file viewers.
   // Local state + service.subscribe (registry changes are rare — plugin
   // load/unload — so a plain effect is enough; no external-store ceremony).
-  const [tabs, setTabs] = useState<TabDescriptor[]>(() => [...service.getTabs()].sort(tabOrder))
+  const [tabs, setTabs] = useState<TabDescriptor[]>(() => tabInventory(service.getTabs()))
   const [viewers, setViewers] = useState<FileViewerDescriptor[]>(() => [...service.getFileViewers()].sort(viewerOrder))
   useEffect(() => service.subscribe(() => {
-    setTabs([...service.getTabs()].sort(tabOrder))
+    setTabs(tabInventory(service.getTabs()))
     setViewers([...service.getFileViewers()].sort(viewerOrder))
   }), [service])
+
+  // The host's registered guide cards: the start-page inventory. The catalog
+  // is optional so harness renders (and a host without the native surface)
+  // simply see no start-page rows.
+  const subscribeGuide = guideCatalog?.subscribe ?? NOOP_SUBSCRIBE
+  const snapshotGuide = guideCatalog === undefined
+    ? () => EMPTY_GUIDE_ENTRIES
+    : () => guideCatalog.getSnapshot()
+  const guideEntries = useSyncExternalStore(subscribeGuide, snapshotGuide, snapshotGuide)
+  const guideInventory = mergeGuideEntries(guideEntries, tabs, prefs.tabsEnabled)
+  const orderedGuide = orderGuideEntries(guideInventory, prefs.guideOrder)
+  const guideSwitchHidden: Record<string, boolean> = {}
+  for (const entry of orderedGuide) {
+    guideSwitchHidden[entry.key] = entry.descriptorId === undefined
+      ? prefs.guideHidden[entry.key] === true
+      : prefs.tabsEnabled[entry.descriptorId] === false
+  }
 
   // The settings document revision (guards concurrent writes). A ref: commits
   // read the freshest value at execution time, no re-render needed.
@@ -675,6 +759,41 @@ export function SideCardSection({ store, service }: SideCardSectionProps) {
     applyPref({ viewersEnabled: { ...optimisticRef.current.viewersEnabled, [id]: next } })
   }
 
+  /** Hide/show one start-page card without touching its tab type. */
+  const onToggleGuide = (key: string, shown: boolean): void => {
+    const next = { ...optimisticRef.current.guideHidden }
+    if (shown) delete next[key]
+    else next[key] = true
+    applyPref({ guideHidden: next })
+  }
+
+  /**
+   * One unified switch: Better Sidebar types use the same feature switch as
+   * the card above; host/third-party types only have start-page visibility.
+   */
+  const onToggleGuideEntry = (entry: NativeGuideEntry, shown: boolean): void => {
+    if (entry.descriptorId === undefined) {
+      onToggleGuide(entry.key, shown)
+      return
+    }
+    applyPref({
+      tabsEnabled: { ...optimisticRef.current.tabsEnabled, [entry.descriptorId]: shown },
+    })
+  }
+
+  /** Move one card within the current explicit order. */
+  const onMoveGuide = (key: string, delta: -1 | 1): void => {
+    const keys = orderedGuide.map(entry => entry.key)
+    const at = keys.indexOf(key)
+    const to = at + delta
+    if (at < 0 || to < 0 || to >= keys.length) return
+    const next = [...keys]
+    const [moved] = next.splice(at, 1)
+    if (moved === undefined) return
+    next.splice(to, 0, moved)
+    applyPref({ guideOrder: next })
+  }
+
   /** Flip one declaratively-declared toggle (a SidebarPrefs boolean field). */
   const onToggleSetting = (toggle: SidebarSettingToggle, next: boolean): void => {
     applyPref({ [toggle.key]: next })
@@ -683,6 +802,11 @@ export function SideCardSection({ store, service }: SideCardSectionProps) {
   /** Commit one declaratively-declared select row (the option's value, or an
    *  array of values under `multi`). */
   const onSelectSetting = (toggle: SidebarSettingToggle, next: unknown): void => {
+    applyPref({ [toggle.key]: next })
+  }
+
+  /** Commit one declaratively-declared patterns row (the whole string list). */
+  const onPatternsSetting = (toggle: SidebarSettingToggle, next: string[]): void => {
     applyPref({ [toggle.key]: next })
   }
 
@@ -709,34 +833,7 @@ export function SideCardSection({ store, service }: SideCardSectionProps) {
     return raw
   }
 
-  /**
-   * Pick the title-bar / shell compatibility scheme. Mirrors the legacy
-   * `titleBarCompat` flag (true = anything but the conservative auto) so
-   * documents stay readable by older plugin versions.
-   */
-  /**
-   * Pick the title-bar / shell compatibility scheme from the dropdown. The
-   * option values are `auto` | `web` | `custom` | `preset:<id>`; selecting
-   * a preset stores both the scheme and its id. Mirrors the legacy
-   * `titleBarCompat` flag (true for preset/custom) so documents stay
-   * readable by older plugin versions.
-   */
-  const onSchemeSelect = (value: unknown): void => {
-    if (typeof value !== 'string') return
-    if (value === 'auto' || value === 'web' || value === 'custom') {
-      applyPref({ titleBarScheme: value, titleBarCompat: value === 'custom' })
-      return
-    }
-    if (value.startsWith('preset:') && getShellPreset(value.slice('preset:'.length)) !== undefined) {
-      applyPref({
-        titleBarScheme: 'preset',
-        titleBarPresetId: value.slice('preset:'.length),
-        titleBarCompat: true,
-      })
-    }
-  }
-
-  /** Commit the free-form custom CSS (scheme `custom`). */
+  /** Commit the free-form custom CSS (the user-space escape hatch). */
   const commitCustomCss = (raw: string): void => {
     applyPref({ customCss: raw })
   }
@@ -854,51 +951,52 @@ export function SideCardSection({ store, service }: SideCardSectionProps) {
             onChange={(next) => { applyPref({ agentOpenTools: next }) }}
           />
         </div>
+      </div>
+
+      {/* 自定义 CSS: the user-space escape hatch. The retired "位置兼容模式"
+          scheme dropdown (auto / web / shell presets / custom) lived on the
+          常规 row and its gear popup held this textarea next to a strip-px
+          number row; the whole strip mechanism was removed, so the textarea
+          is the only thing that row ever really owned and it now has its own
+          group. Applied whenever non-empty (last in the cascade). */}
+      <div className={css.group}>
+        <div className={css.groupHeading}>{t('settingsCustomCssTitle')}</div>
+        <CssDraft
+          key={prefs.customCss}
+          value={prefs.customCss}
+          label={t('settingsCustomCssTitle')}
+          placeholder={t('settingsCustomCssPlaceholder')}
+          onCommit={commitCustomCss}
+        />
+      </div>
+
+      {/* 手机: the narrow-viewport adaptations. Both switches only ever change
+          what happens on a NARROW viewport (the plugin's own 768px bracket),
+          so a desktop reader's behaviour is untouched whatever they pick —
+          and neither one rewrites the wide-viewport switches above. */}
+      <div className={css.group}>
+        <div className={css.groupHeading}>{t('settingsMobileTitle')}</div>
         <div className={css.row}>
           <span className={css.rowText}>
-            <span className={css.title}>{t('settingsTitleBarTitle')}</span>
-            <span className={css.desc}>{t('settingsTitleBarDesc')}</span>
+            <span className={css.title}>{t('settingsMobileNoAutoOpenTitle')}</span>
+            <span className={css.desc}>{t('settingsMobileNoAutoOpenDesc')}</span>
           </span>
-          <span className={css.control}>
-            {/*
-              The scheme dropdown (the shared SelectMenu — NOT a native
-              select): 自动检测 (default) / DSH官方Web / 各壳兼容方案 /
-              自定义方案. Matching presets carry a 「已检测」 desc badge
-              (suggestion only). The 自定义方案 row keeps its gear (the
-              popup with the shift distance + custom CSS) — the other
-              schemes need no further settings.
-            */}
-            <SelectMenu
-              label={t('settingsTitleBarTitle')}
-              value={titleBarSchemeValue(prefs)}
-              options={[
-                { value: 'auto', title: t('settingsSchemeAutoTitle'), desc: t('settingsSchemeAutoDesc') },
-                { value: 'web', title: t('settingsSchemeWebTitle'), desc: t('settingsSchemeWebDesc') },
-                ...getShellPresets().map(preset => ({
-                  value: `preset:${preset.id}`,
-                  title: preset.title,
-                  // The preset desc is i18n-friendly (string or () => string)
-                  // — resolve it like every other settings text here.
-                  desc: preset.detect?.(detectedEnv) === true
-                    ? `${textOf(preset.desc)}（${t('settingsSchemeDetectedSuffix')}）`
-                    : textOf(preset.desc),
-                })),
-                { value: 'custom', title: t('settingsSchemeCustomTitle'), desc: t('settingsSchemeCustomDesc') },
-              ]}
-              onSelect={onSchemeSelect}
-            />
-            {prefs.titleBarScheme === 'custom' && (
-              <button
-                type="button"
-                className={css.rowGear}
-                aria-label={`${t('settingsTitleBarTitle')} ${t('settingsPopup')}`}
-                title={t('settingsPopup')}
-                onClick={() => { setStripSettingsOpen(true) }}
-              >
-                <IconSettingsOutlineRegular size={14} />
-              </button>
-            )}
+          <Switch
+            label={t('settingsMobileNoAutoOpenTitle')}
+            checked={prefs.mobileNoAutoOpen}
+            onChange={(next) => { applyPref({ mobileNoAutoOpen: next }) }}
+          />
+        </div>
+        <div className={css.row}>
+          <span className={css.rowText}>
+            <span className={css.title}>{t('settingsMobileTreeTitle')}</span>
+            <span className={css.desc}>{t('settingsMobileTreeDesc')}</span>
           </span>
+          <Switch
+            label={t('settingsMobileTreeTitle')}
+            checked={prefs.mobileDefaultTree}
+            onChange={(next) => { applyPref({ mobileDefaultTree: next }) }}
+          />
         </div>
       </div>
 
@@ -944,6 +1042,78 @@ export function SideCardSection({ store, service }: SideCardSectionProps) {
             <span className={css.cardDesc}>{t('addPluginsTabCardDesc')}</span>
           </button>
         </div>
+      </div>
+
+      {/* 开始页: the host guide's inventory. These switches control the start
+          page only — the feature cards above still own availability. */}
+      <div className={css.group}>
+        <div className={css.groupHeading}>
+          <span>{t('settingsStartPageTitle')}</span>
+          <span className={css.count}>{orderedGuide.length}</span>
+        </div>
+        <p className={css.groupHint}>{t('settingsStartPageDesc')}</p>
+        <div className={css.row}>
+          <span className={css.rowText}>
+            <span className={css.title}>{t('settingsGuideTakeoverTitle')}</span>
+            <span className={css.desc}>{t('settingsGuideTakeoverDesc')}</span>
+          </span>
+          <Switch
+            label={t('settingsGuideTakeoverTitle')}
+            checked={prefs.guideTakeover}
+            onChange={(next) => { applyPref({ guideTakeover: next }) }}
+          />
+        </div>
+        <div className={css.row}>
+          <span className={css.rowText}>
+            <span className={css.title}>{t('settingsGuideRowsTitle')}</span>
+            <span className={css.desc}>{t('settingsGuideRowsDesc')}</span>
+          </span>
+          <GuideRowsInput
+            value={prefs.guideRows}
+            label={t('settingsGuideRowsTitle')}
+            onCommit={(next) => { applyPref({ guideRows: next }) }}
+          />
+        </div>
+        <div className={css.row}>
+          <span className={css.rowText}>
+            <span className={css.title}>{t('settingsGuideAlignTitle')}</span>
+            <span className={css.desc}>{t('settingsGuideAlignDesc')}</span>
+          </span>
+          <span className={css.segmented} role="radiogroup" aria-label={t('settingsGuideAlignTitle')}>
+            {(['center', 'top'] as const).map(value => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                className={clsx(css.segment, prefs.guideAlign === value && css.segmentOn)}
+                aria-checked={prefs.guideAlign === value}
+                onClick={() => { applyPref({ guideAlign: value }) }}
+              >
+                {t(value === 'center' ? 'settingsGuideAlignCenter' : 'settingsGuideAlignTop')}
+              </button>
+            ))}
+          </span>
+        </div>
+        <div className={css.guideOrderHeader}>
+          <span>{t('guideOrder')}</span>
+          <button
+            type="button"
+            className={css.guideReset}
+            onClick={() => { applyPref({ guideOrder: [] }) }}
+          >
+            {t('settingsGuideReset')}
+          </button>
+        </div>
+        {orderedGuide.length === 0
+          ? <p className={css.guideEmpty}>{t('guideEmpty')}</p>
+          : (
+            <GuideOrderList
+              entries={orderedGuide}
+              hidden={guideSwitchHidden}
+              onMove={onMoveGuide}
+              onToggle={(entry, hidden) => { onToggleGuideEntry(entry, !hidden) }}
+            />
+          )}
       </div>
 
       {/* 文件预览: one small card per registered file viewer. */}
@@ -1014,59 +1184,16 @@ export function SideCardSection({ store, service }: SideCardSectionProps) {
             onToggle={onToggleSetting}
             onCommit={onCommitSetting}
             onSelectValue={onSelectSetting}
+            onPatterns={onPatternsSetting}
             onPluginToggle={(toggle, next) => { onPluginToggle(settingsFor.id, toggle, next) }}
             onPluginCommit={(toggle, raw) => onPluginCommitSetting(settingsFor.id, toggle, raw)}
             onPluginSelectValue={(toggle, next) => { applyPluginSetting(settingsFor.id, toggle.key, next) }}
+            onPluginPatterns={(toggle, next) => { applyPluginSetting(settingsFor.id, toggle.key, next) }}
             onPluginWrite={(key, value) => { applyPluginSetting(settingsFor.id, key, value) }}
             onClose={() => { setSettingsFor(null) }}
             store={store}
             service={service}
           />
-        </Modal>
-      )}
-
-      {/* The custom-scheme popup (opened by the gear next to the scheme
-          dropdown when 自定义方案 is active): the shift distance in px and
-          the free-form custom CSS. The OTHER schemes (自动检测 / DSH官方Web /
-          壳预设) need no further settings — the scheme itself is chosen on
-          the 常规 row. Mounted only while open (the Modal SSR rule above). */}
-      {stripSettingsOpen && (
-        <Modal
-          open
-          onClose={() => { setStripSettingsOpen(false) }}
-          title={t('settingsTitleBarTitle')}
-          description={t('settingsPopupDesc', { feature: t('settingsTitleBarTitle') })}
-          closeLabel={t('close')}
-          className={css.popupDialog}
-          footer={(
-            <button type="button" className={css.done} onClick={() => { setStripSettingsOpen(false) }}>
-              {t('settingsDone')}
-            </button>
-          )}
-        >
-          <div className={css.popupRows}>
-            <FeatureSettingsRows
-              toggles={[{
-                key: 'titleBarStripPx',
-                type: 'number',
-                title: () => t('settingsTitleBarStripTitle'),
-                desc: () => t('settingsTitleBarStripDesc'),
-                min: TITLE_BAR_STRIP_MIN,
-                max: TITLE_BAR_STRIP_MAX,
-                unit: 'px',
-              }]}
-              prefs={prefs}
-              onToggle={onToggleSetting}
-              onCommit={onCommitSetting}
-            />
-            <CssDraft
-              key={prefs.customCss}
-              value={prefs.customCss}
-              label={t('settingsCustomCssTitle')}
-              placeholder={t('settingsCustomCssPlaceholder')}
-              onCommit={commitCustomCss}
-            />
-          </div>
         </Modal>
       )}
 

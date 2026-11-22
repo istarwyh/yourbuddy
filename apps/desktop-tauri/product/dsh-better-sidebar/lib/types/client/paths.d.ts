@@ -1,6 +1,6 @@
 /**
- * Path projection helpers shared by the explorer rows: a path relative to
- * the session cwd (for the @-reference button and "copy relative path").
+ * Path projection helpers shared by the explorer rows: workspace-relative
+ * mentions and session-cwd-relative "copy relative path".
  * The fs-tree joins with '/' even on Windows, so both separators normalize
  * to '/' before comparison.
  *
@@ -34,6 +34,14 @@ export declare function isAbsolutePath(path: string): boolean;
  */
 export declare function relativeTo(cwd: string, path: string): string;
 /**
+ * Project an absolute explorer entry against the host-confirmed workspace
+ * root. Unlike copy-relative-path's `relativeTo`, mention insertion must
+ * never fall back to an absolute token. Unknown roots, traversal components
+ * and paths outside the workspace are refused. Windows drive/UNC paths are
+ * case-insensitive; POSIX paths retain their case-sensitive distinction.
+ */
+export declare function workspaceRelativePath(root: string | undefined, path: string): string | undefined;
+/**
  * Whether `target` lies under `base` (or equals it), tolerant of separator
  * style and — on Windows-style drive paths — of letter case. A client-side
  * mirror of the host's `isWithin` (fs-tree.ts) used to decide whether a
@@ -59,3 +67,18 @@ export declare function extOf(path: string): string;
  * roots, drive letters and UNC shares must not be joined onto the cwd.
  */
 export declare function resolveSidebarPath(cwd: string | undefined, path: string): string;
+/**
+ * Resolve one client path and normalize it to the base's separator dialect.
+ *
+ * A folder window roots the shared FileTree at this value. The tree keys each
+ * level by the root it REQUESTED, while every listing answer is keyed by the
+ * host's `path.resolve`'d absolute path — on Windows a chat file address
+ * ("research/workspace-sections-campaign/x", session-relative and
+ * `/`-separated) joined onto a `C:\…` cwd used to leave MIXED separators: two
+ * different strings for one directory, so the root level waited on its
+ * loading placeholder forever (#1029 follow-up). Normalizing to the base's
+ * dialect also drops a trailing separator, exactly as `path.resolve` does
+ * (a drive root keeps it). A non-Windows base returns the plain join: on
+ * POSIX a backslash is a legal filename character.
+ */
+export declare function resolveNativeSidebarPath(cwd: string | undefined, path: string): string;

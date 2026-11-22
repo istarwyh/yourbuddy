@@ -1,6 +1,6 @@
 {
   "formatVersion": 1,
-  "managedNodeVersion": "22.19.0",
+  "managedNodeVersion": "24.22.3",
   "plugins": [
     {
       "id": "harbor-evolution",
@@ -17,40 +17,40 @@
       "pythonSourcePath": "packages/harbor-plugin",
       "peerOverrides": {
         "0.7.3": {
-          "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
-          "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-skill": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
         },
         "0.8.1": {
-          "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
-          "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-skill": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
         },
         "0.9.2": {
-          "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
-          "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-skill": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
         },
         "0.9.4": {
-          "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
-          "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-skill": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
         },
         "0.9.5": {
-          "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
-          "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-skill": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
         },
         "0.9.6": {
-          "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
-          "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-skill": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
         },
         "0.9.7": {
-          "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
-          "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-skill": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
         },
         "0.9.8": {
-          "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
-          "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-skill": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
         },
         "0.10.1": {
-          "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
-          "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-skill": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
         }
       },
       "clientInjectRemovals": {
@@ -85,13 +85,18 @@
       "kind": "npm-version",
       "package": "dsh-codex-auth",
       "destination": "dsh-codex-auth",
-      "version": "0.3.3-rc.4",
+      "version": "0.3.4-rc.2",
       "peerOverrides": {
         "0.3.1": {
-          "@deepseek-ai/dsh-*": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-*": "0.2.2-rc.5"
         },
         "0.3.2": {
-          "@deepseek-ai/dsh-*": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-*": "0.2.2-rc.5"
+        },
+        "0.3.4-rc.2": {
+          "@deepseek-ai/dsh-compaction": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-compaction-basic": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-token-meter": "0.2.2-rc.5"
         }
       },
       "peerRemovals": {
@@ -113,13 +118,13 @@
       "destination": "dsh-better-sidebar",
       "peerOverrides": {
         "0.17.1": {
-          "@deepseek-ai/dsh-*": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-*": "0.2.2-rc.5"
         },
         "0.19.1": {
-          "@deepseek-ai/dsh-*": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-*": "0.2.2-rc.5"
         },
         "0.21.1": {
-          "@deepseek-ai/dsh-*": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-*": "0.2.2-rc.5"
         }
       },
       "scriptRemovals": {
@@ -135,12 +140,12 @@
       "destination": "plugin-marketplace",
       "peerOverrides": {
         "0.2.8": {
-          "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
-          "@deepseek-ai/dsh-settings": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-llm": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-settings": "0.2.2-rc.5"
         },
         "0.3.6": {
-          "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
-          "@deepseek-ai/dsh-settings": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-llm": "0.2.2-rc.5",
+          "@deepseek-ai/dsh-settings": "0.2.2-rc.5"
         }
       }
     },
@@ -156,7 +161,7 @@
       },
       "peerOverrides": {
         "0.5.5": {
-          "@deepseek-ai/dsh-settings": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-settings": "0.2.2-rc.5"
         }
       }
     },
@@ -183,8 +188,8 @@
       },
       "peerOverrides": {
         "0.1.0": {
-          "@deepseek-ai/cordis": "4.0.4",
-          "@deepseek-ai/dsh-*": "0.2.0-rc.2"
+          "@deepseek-ai/cordis": "4.1.0",
+          "@deepseek-ai/dsh-*": "0.2.2-rc.5"
         }
       }
     },
@@ -200,7 +205,7 @@
       "destination": "ego-browser",
       "peerOverrides": {
         "0.8.5": {
-          "@deepseek-ai/dsh-*": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-*": "0.2.2-rc.5"
         }
       }
     },
@@ -213,10 +218,10 @@
       "destination": "context-doctor",
       "peerOverrides": {
         "0.6.1": {
-          "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
         },
         "0.7.2": {
-          "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+          "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
         }
       }
     },
@@ -225,9 +230,12 @@
       "kind": "npm-version",
       "package": "dsh-media-desk",
       "destination": "media-desk",
-      "version": "2.6.1",
+      "version": "2.7.2",
       "clientInjectRemovals": {
         "2.6.1": [
+          "@deepseek-ai/dsh-client-runtime"
+        ],
+        "2.7.2": [
           "@deepseek-ai/dsh-client-runtime"
         ]
       }
@@ -237,7 +245,7 @@
       "kind": "npm-version",
       "package": "dsh-context",
       "destination": "context",
-      "version": "0.82.2",
+      "version": "0.87.0",
       "scriptRemovals": {
         "0.82.2": [
           "prepare"

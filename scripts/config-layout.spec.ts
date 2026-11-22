@@ -31,17 +31,20 @@ describe('repository configuration layout', () => {
     const { scripts } = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as {
       scripts: Record<string, string>
     }
+    expect(scripts['build:lib:host']).toContain('scripts/compile-referenced-projects.ts host-libraries')
+    expect(scripts['build:lib:client']).toContain('tsdown --config-loader native --config config/build/tsdown.config.ts --env.DSH_BUILD_FACE client')
+    const libraryBuild = readFileSync(resolve(root, 'scripts/compile-referenced-projects.ts'), 'utf8')
     for (const face of ['host', 'client']) {
-      expect(scripts[`build:lib:${face}`]).toContain(`tsdown --config config/build/tsdown.config.ts --env.DSH_BUILD_FACE ${face}`)
+      expect(libraryBuild).toContain(`'--config', 'config/build/tsdown.config.ts', '--env.DSH_BUILD_FACE', '${face}'`)
     }
     expect(readFileSync(resolve(root, 'tsdown.config.ts'), 'utf8'))
       .toContain("export { default } from './config/build/tsdown.config.ts'")
     const config = readFileSync(resolve(root, 'config/build/tsdown.config.ts'), 'utf8')
-    expect(config).toContain("cwd: fileURLToPath(new URL('../../', import.meta.url))")
+    expect(config).toContain("const root = fileURLToPath(new URL('../../', import.meta.url))")
     expect(config).not.toContain('process.chdir')
     const wine = readFileSync(resolve(root, 'scripts/wine-windows-gates.sh'), 'utf8')
     for (const face of ['host', 'client']) {
-      expect(wine).toContain(`"$tsdown_js" --config config/build/tsdown.config.ts --env.DSH_BUILD_FACE ${face}`)
+      expect(wine).toContain(`"$tsdown_js" --config-loader native --config config/build/tsdown.config.ts --env.DSH_BUILD_FACE ${face}`)
     }
     expect(scripts.test).toContain('vitest run --config config/vitest/vitest.config.ts')
     expect(scripts['test:coverage']).toContain('vitest run --config config/vitest/vitest.config.ts --coverage')

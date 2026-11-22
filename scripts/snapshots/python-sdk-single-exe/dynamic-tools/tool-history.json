@@ -30,7 +30,7 @@
   "events": [
     {
       "type": "request/header",
-      "seq": 11,
+      "seq": 12,
       "time": 0,
       "data": {
         "header": {
@@ -45,29 +45,36 @@
             "maxTokens": true
           },
           "tools": [
+            "apply_patch",
+            "ask_user_question",
             "create_goal",
             "edit",
-            "exit_plan_mode",
             "get_goal",
             "glob",
             "grep",
-            "interrupt_agent",
             "job_kill",
             "job_list",
             "job_output",
             "list_agents",
-            "load_workspace_dependencies",
+            "plugin_manager",
+            "present",
             "read",
             "read_image",
+            "schedule_create",
+            "schedule_edit",
+            "schedule_list",
+            "schedule_view",
             "send_message",
             "skill",
             "subagent",
             "subagent_fork",
             "todo_write",
             "update_goal",
+            "wait_agent",
             "web_fetch",
             "web_search",
             "workflow",
+            "working_directory",
             "write"
           ]
         },
@@ -76,7 +83,7 @@
     },
     {
       "type": "request/context",
-      "seq": 12,
+      "seq": 13,
       "time": 0,
       "data": {
         "provider": "deepseek-official",
@@ -101,20 +108,25 @@
             "maxTokens": true
           },
           "tools": [
+            "apply_patch",
+            "ask_user_question",
             "create_goal",
             "edit",
-            "exit_plan_mode",
             "get_goal",
             "glob",
             "grep",
-            "interrupt_agent",
             "job_kill",
             "job_list",
             "job_output",
             "list_agents",
-            "load_workspace_dependencies",
+            "plugin_manager",
+            "present",
             "read",
             "read_image",
+            "schedule_create",
+            "schedule_edit",
+            "schedule_list",
+            "schedule_view",
             "send_message",
             "skill",
             "snapshot_ping",
@@ -122,9 +134,11 @@
             "subagent_fork",
             "todo_write",
             "update_goal",
+            "wait_agent",
             "web_fetch",
             "web_search",
             "workflow",
+            "working_directory",
             "write"
           ]
         },
@@ -151,13 +165,13 @@
           "role": "developer",
           "id": "{{messageId}}"
         },
-        "headerSeq": 20
+        "headerSeq": "{{header:2}}"
       },
       "surfaceOp": "append"
     },
     {
       "type": "request/header",
-      "seq": 28,
+      "seq": 27,
       "time": 0,
       "data": {
         "header": {
@@ -172,29 +186,36 @@
             "maxTokens": true
           },
           "tools": [
+            "apply_patch",
+            "ask_user_question",
             "create_goal",
             "edit",
-            "exit_plan_mode",
             "get_goal",
             "glob",
             "grep",
-            "interrupt_agent",
             "job_kill",
             "job_list",
             "job_output",
             "list_agents",
-            "load_workspace_dependencies",
+            "plugin_manager",
+            "present",
             "read",
             "read_image",
+            "schedule_create",
+            "schedule_edit",
+            "schedule_list",
+            "schedule_view",
             "send_message",
             "skill",
             "subagent",
             "subagent_fork",
             "todo_write",
             "update_goal",
+            "wait_agent",
             "web_fetch",
             "web_search",
             "workflow",
+            "working_directory",
             "write"
           ]
         },
@@ -203,7 +224,7 @@
     },
     {
       "type": "developer/message",
-      "seq": 29,
+      "seq": 28,
       "time": 0,
       "data": {
         "turn": 1,

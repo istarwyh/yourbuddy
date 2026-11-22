@@ -7,13 +7,23 @@ export interface DirectoryWatchOptions {
     /** Expanded directories below the root, in the host's absolute path form. */
     dirs: readonly string[];
     /**
-     * A directory whose listing is stale.
-     * @param dir - absolute directory path, exactly the form the tree keys levels by.
+     * Whether the owning tab is on screen. Defaults to true; a parked tree
+     * closes its socket (releasing the host's watchers) and re-lists the
+     * watched directories once when it comes back.
      */
-    onStale: (dir: string) => void;
+    visible?: boolean;
+    /**
+     * Directories whose listings are stale.
+     *
+     * A watch notice names one directory. The parked→visible re-arm names the
+     * WHOLE watched set at once: the caller re-lists it in one batch request
+     * instead of firing one request per directory.
+     * @param dirs - absolute directory paths, exactly the form the tree keys levels by.
+     */
+    onStale: (dirs: readonly string[]) => void;
 }
 /**
  * Keep the file tree's expanded folders watched for the component's lifetime.
- * @param options - session, root, expanded directories, and the staleness callback.
+ * @param options - session, root, expanded directories, visibility, and the staleness callback.
  */
 export declare function useDirectoryWatch(options: DirectoryWatchOptions): void;

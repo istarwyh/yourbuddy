@@ -11,12 +11,13 @@
 import { LlmError } from '@deepseek-ai/dsh-llm'
 import type { AssistantMessage as HarnessAssistantMessage, ModelMessageSource, ReplayEnvelope } from '@deepseek-ai/dsh-llm'
 import type { Api, AssistantMessage, ToolCall, Usage as PiUsage } from '@earendil-works/pi-ai'
+import type { PrefixDigests } from './prefix-binding.ts'
 
 /** Per-block half of the pi-ai replay envelope, one entry per content block. */
 export type PiAiReplayBlock =
   | { type: 'text'; textSignature?: string }
   | { type: 'reasoning'; thinkingSignature?: string; redacted?: boolean }
-  | { type: 'tool-call'; thoughtSignature?: string }
+  | { type: 'tool-call'; thoughtSignature?: string; namespace?: string }
 
 /** Versioned response-level half of the pi-ai replay envelope. */
 export interface PiAiReplayResponse {
@@ -32,6 +33,8 @@ export interface PiAiReplayResponse {
   /** Provider-native effort for historical replay; absence is preserved. */
   providerThinkingLevel?: string
   stopReason: AssistantMessage['stopReason']
+  /** Digest of the request context this response was generated from; see `prefix-binding.ts`. */
+  prefixDigest?: string
 }
 
 /** The validated halves of one pi-ai replay envelope. */
@@ -72,9 +75,10 @@ function emptyPiUsage(): PiUsage {
  * removes one.
  * @param message - completed native pi-ai assistant response.
  * @param requestedModel - request identity stored in the assistant source; defaults to the native model.
+ * @param prefixDigest - digest of the request context, recorded when the protocol binds thinking to it.
  * @returns the versioned lossless-JSON replay projection.
  */
-export function toPiReplayState(message: AssistantMessage, requestedModel = message.model): ReplayEnvelope {
+export function toPiReplayState(message: AssistantMessage, requestedModel = message.model, prefixDigest?: string): ReplayEnvelope {
   const response: PiAiReplayResponse = {
     kind: 'pi-ai',
     version: 2,
@@ -85,6 +89,7 @@ export function toPiReplayState(message: AssistantMessage, requestedModel = mess
     ...message.responseId === undefined ? {} : { responseId: message.responseId },
     ...message.providerThinkingLevel === undefined ? {} : { providerThinkingLevel: message.providerThinkingLevel },
     stopReason: message.stopReason,
+    ...prefixDigest === undefined ? {} : { prefixDigest },
   }
   return {
     response,
@@ -102,6 +107,7 @@ export function toPiReplayState(message: AssistantMessage, requestedModel = mess
         case 'toolCall': return {
           type: 'tool-call',
           ...block.thoughtSignature === undefined ? {} : { thoughtSignature: block.thoughtSignature },
+          ...block.namespace === undefined ? {} : { namespace: block.namespace },
         }
       }
     }),
@@ -130,13 +136,14 @@ function readReplayState(value: unknown): PiAiReplayState {
   if (response['responseModel'] !== undefined && typeof response['responseModel'] !== 'string') return invalidReplay('responseModel must be a string')
   if (response['responseId'] !== undefined && typeof response['responseId'] !== 'string') return invalidReplay('responseId must be a string')
   if (response['providerThinkingLevel'] !== undefined && typeof response['providerThinkingLevel'] !== 'string') return invalidReplay('providerThinkingLevel must be a string')
+  if (response['prefixDigest'] !== undefined && typeof response['prefixDigest'] !== 'string') return invalidReplay('prefixDigest must be a string')
   const blocks = envelope['blocks']
   if (!Array.isArray(blocks)) return invalidReplay('blocks must be an array')
   for (const [index, value] of blocks.entries()) {
     if (typeof value !== 'object' || value === null || Array.isArray(value)) return invalidReplay(`block ${index} must be an object`)
     const block = value as Record<string, unknown>
     if (!['text', 'reasoning', 'tool-call'].includes(String(block['type']))) return invalidReplay(`block ${index} has an unknown type`)
-    for (const signature of ['textSignature', 'thinkingSignature', 'thoughtSignature'] as const) {
+    for (const signature of ['textSignature', 'thinkingSignature', 'thoughtSignature', 'namespace'] as const) {
       if (block[signature] !== undefined && typeof block[signature] !== 'string') return invalidReplay(`block ${index} ${signature} must be a string`)
     }
     if (block['redacted'] !== undefined && typeof block['redacted'] !== 'boolean') return invalidReplay(`block ${index} redacted must be boolean`)
@@ -183,7 +190,12 @@ function foreignAssistant(message: HarnessAssistantMessage): AssistantMessage {
 }
 
 /** Recombine durable Harness content with validated pi-ai replay metadata. */
-function replayedAssistant(message: HarnessAssistantMessage, source: ModelMessageSource, rawState: unknown): AssistantMessage {
+function replayedAssistant(
+  message: HarnessAssistantMessage,
+  source: ModelMessageSource,
+  rawState: unknown,
+  prefixDigests?: PrefixDigests,
+): AssistantMessage {
   const state = readReplayState(rawState)
   if (state.response.provider !== source.provider) return invalidReplay('provider does not match assistant source')
   if (state.response.model !== source.model) return invalidReplay('model does not match assistant source')
@@ -209,12 +221,13 @@ function replayedAssistant(message: HarnessAssistantMessage, source: ModelMessag
         name: block.name,
         arguments: parseArguments(block.arguments),
         ...replay.type === 'tool-call' && replay.thoughtSignature !== undefined ? { thoughtSignature: replay.thoughtSignature } : {},
+        ...replay.type === 'tool-call' && replay.namespace !== undefined ? { namespace: replay.namespace } : {},
       }
       /* v8 ignore next -- readReplayState rejects unknown replay tags, so an equal plugin-added Harness tag cannot reach this switch */
       default: return invalidReplay(`block ${index} has an unsupported Harness type`)
     }
   })
-  return {
+  const assistant: AssistantMessage = {
     role: 'assistant',
     content,
     api: state.response.api,
@@ -227,6 +240,8 @@ function replayedAssistant(message: HarnessAssistantMessage, source: ModelMessag
     stopReason: state.response.stopReason,
     timestamp: 0,
   }
+  if (state.response.prefixDigest !== undefined) prefixDigests?.set(assistant, state.response.prefixDigest)
+  return assistant
 }
 
 /**
@@ -240,13 +255,18 @@ function replayedAssistant(message: HarnessAssistantMessage, source: ModelMessag
  * @param message - model-produced assistant content with provider, model, and optional adapter-owned replay metadata.
  * @param onDegrade - called with the diagnostic reason when an unusable replay
  *   state falls back to provider-neutral conversion.
+ * @param prefixDigests - receives the recorded request-prefix digest of the returned message, when replay state has one.
  * @returns a native pi-ai assistant message reconstructed from durable content.
  */
-export function toPiAssistant(message: HarnessAssistantMessage, onDegrade?: (reason: string) => void): AssistantMessage {
+export function toPiAssistant(
+  message: HarnessAssistantMessage,
+  onDegrade?: (reason: string) => void,
+  prefixDigests?: PrefixDigests,
+): AssistantMessage {
   const source = message.source
   if (source.replayState === undefined) return foreignAssistant(message)
   try {
-    return replayedAssistant(message, source, source.replayState)
+    return replayedAssistant(message, source, source.replayState, prefixDigests)
   } catch (error: unknown) {
     /* v8 ignore next -- replayedAssistant throws only INVALID_REPLAY_STATE LlmErrors; the
        guard keeps a future non-replay failure loud instead of silently degrading it */

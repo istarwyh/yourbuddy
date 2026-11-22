@@ -9,6 +9,7 @@
  * tests/mermaid-blocks.spec.ts).
  */
 import type { MarkdownCopyLabels } from './markdown-labels.tsx';
+import type { MarkdownPathImages } from '@deepseek-ai/dsh-client-ui-primitives';
 /** One fenced mermaid diagram lifted out of the markdown source. */
 export interface MermaidBlock {
     kind: 'mermaid';
@@ -26,10 +27,16 @@ export interface MermaidMarkdownProps {
     /** The full markdown source (rendered in a single MarkdownText pass). */
     text: string;
     codeLabels: MarkdownCopyLabels;
+    /** The owner's local-path image vocabulary for the same pass. */
+    pathImages?: MarkdownPathImages | undefined;
 }
 /** CommonMark opening fence: 0-3 spaces indent + a run of 3+ backticks or tildes. */
 export declare const OPEN_FENCE_RE: RegExp;
-/** A closing-fence line: 0-3 spaces indent + 3+ backticks/tildes + trailing spaces only. */
+/** A closing-fence line: 0-3 spaces indent + 3+ backticks/tildes + trailing
+ *  spaces only. The optional `\r` is a CRLF line's terminator, not content: a
+ *  CRLF document reaches this regex with its line endings intact, and without
+ *  the `\r` no fence would ever close (the block would swallow the rest of the
+ *  file). */
 export declare const CLOSE_FENCE_RE: RegExp;
 /** Parse the info string from the line tail after the fence run; null when invalid. */
 export declare function fenceInfo(rest: string, fence: string): string | null;

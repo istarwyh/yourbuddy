@@ -13,4 +13,4 @@
 
 根目录 [vitest.config.ts](../vitest.config.ts) 与 [tsdown.config.ts](../tsdown.config.ts) 转导出此处的配置，让两个工具继续从仓库根目录自动发现配置。
 
-五份根目录 TypeScript 配置保留编辑器与 tsx 入口（[tsconfig.json](../tsconfig.json)）、包继承与源码别名（[tsconfig.base.json](../tsconfig.base.json)、[tsconfig.base.client.json](../tsconfig.base.client.json)），以及编译器与生成器项目图（[tsconfig.host.json](../tsconfig.host.json)、[tsconfig.client.json](../tsconfig.client.json)）。[pytest.ini](../pytest.ini) 保留根目录 pytest 发现入口。具名构建与测试流程使用[根包脚本](../package.json)。
+根目录 TypeScript 配置保留编辑器与 tsx 入口（[tsconfig.json](../tsconfig.json)）、Node 编译器选项（[tsconfig.node.base.json](../tsconfig.node.base.json)）、包继承与源码别名（[tsconfig.base.json](../tsconfig.base.json)、[tsconfig.base.client.json](../tsconfig.base.client.json)），以及编译器与生成器项目图（[tsconfig.host.json](../tsconfig.host.json)、[tsconfig.client.json](../tsconfig.client.json)）。[pytest.ini](../pytest.ini) 保留根目录 pytest 发现入口。具名构建与测试流程使用[根包脚本](../package.json)。

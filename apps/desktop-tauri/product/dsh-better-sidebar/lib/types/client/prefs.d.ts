@@ -9,9 +9,9 @@
  * must keep working exactly as composed when the settings surface is missing.
  */
 import type { api } from './api.ts';
-import { clampTitleBarStrip, SIDEBAR_PREFS_DEFAULTS, TITLE_BAR_SCHEMES, TITLE_BAR_STRIP_DEFAULT, type SidebarPrefs, type TitleBarScheme } from '../prefs-shared.ts';
-export { SIDEBAR_PREFS_DEFAULTS, TITLE_BAR_SCHEMES, TITLE_BAR_STRIP_DEFAULT, clampTitleBarStrip, };
-export type { SidebarPrefs, TitleBarScheme };
+import { EXPLORER_EXCLUDE_DEFAULTS, SIDEBAR_PREFS_DEFAULTS, type SidebarPrefs, type SidechatSubmitKey } from '../prefs-shared.ts';
+export { EXPLORER_EXCLUDE_DEFAULTS, SIDEBAR_PREFS_DEFAULTS, };
+export type { SidebarPrefs };
 /** The settings wire face the preferences need (a subset of the plugin api). */
 export type SidebarSettingsClient = Pick<typeof api, 'settingsGet' | 'settingsUpdate'>;
 /** Validate one raw resolved value into {@link SidebarPrefs}. Used for the
@@ -21,6 +21,14 @@ export type SidebarSettingsClient = Pick<typeof api, 'settingsGet' | 'settingsUp
  * @returns validated prefs (always well-formed).
  */
 export declare function parsePrefs(value: unknown): SidebarPrefs;
+/**
+ * The side-chat composer's submission mode from the parsed preferences. The
+ * value is the side-chat feature's own plugin-owned setting (see
+ * `prefs-shared.ts`), so a document that never chose one reads the default.
+ * @param prefs - the parsed side card preferences.
+ * @returns the configured submit-key mode.
+ */
+export declare function sidechatSubmitKeyOf(prefs: SidebarPrefs): SidechatSubmitKey;
 /**
  * Read the resolved side card preferences through the plugin's settings route.
  * @param settings - the settings wire face (the plugin api by default).

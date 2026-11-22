@@ -1,26 +1,35 @@
 /**
- * Resolve an existing filesystem path through symlinks.
+ * Resolve an existing path to one absolute, lexically-normalized target.
  *
- * Relative paths use the Session workspace as their base, while absolute paths
- * may point anywhere on the host.
- *
- * @param cwd - Session workspace directory used for relative paths.
- * @param target - Client-supplied path in the session's namespace.
- * @returns The canonical absolute path used for the filesystem operation.
+ * @param cwd - Session workspace directory (the base of relative targets).
+ * @param target - Client-supplied absolute or session-relative path.
+ * @param _fence - IGNORED. Kept as a positional parameter so every call site
+ *  (and the route tests) did not have to change shape in the same commit; the
+ *  containment decision it used to carry is gone for good. New code should
+ *  omit it.
+ * @returns The absolute path used for the filesystem operation.
+ * @deprecated The name is historical — this is now plain resolution. Use
+ *  {@link resolveTarget} in new code.
  */
-export declare function ensureWorkspacePath(cwd: string, target: string): Promise<string>;
+export declare function ensureWorkspacePath(cwd: string, target: string, _fence?: boolean): Promise<string>;
 /**
- * Validate a write destination, including destinations that do not exist yet.
- * Existing targets are resolved to catch symlinks; missing targets are checked
- * against the nearest existing ancestor before the caller creates or renames.
- * The returned path is rebuilt from that canonical ancestor, so an existing
- * symlink is never left in the path passed to the write operation.
+ * Resolve a path for a WRITE destination (which may not exist yet).
  *
- * Relative paths use the Session workspace as their base, while absolute paths
- * may point anywhere on the host.
+ * Lexical only, exactly like {@link ensureWorkspacePath}: a missing target is
+ * returned as the caller composed it (its parent is created on demand), and an
+ * existing symlink in the path is NOT resolved — the caller writes through it,
+ * which is what "no containment policy" means.
  *
- * @param cwd - Session workspace directory used for relative paths.
- * @param target - Client-supplied destination path in the session's namespace.
- * @returns A canonical path for an existing target or its nearest existing ancestor.
+ * @param cwd - Session workspace directory (the base of relative targets).
+ * @param target - Client-supplied absolute or session-relative path.
+ * @param _fence - IGNORED (see {@link ensureWorkspacePath}).
+ * @returns The absolute destination path.
+ * @deprecated The name is historical — this is now plain resolution.
  */
-export declare function ensureWorkspaceWritePath(cwd: string, target: string): Promise<string>;
+export declare function ensureWorkspaceWritePath(cwd: string, target: string, _fence?: boolean): Promise<string>;
+/**
+ * The single resolution primitive: session-relative targets resolve under the
+ * session cwd, absolute targets stay absolute, and the result is `resolve()`d
+ * (lexical `..` collapse). Throws fs-error for a non-absolute result.
+ */
+export declare function resolveTarget(cwd: string, target: string): string;

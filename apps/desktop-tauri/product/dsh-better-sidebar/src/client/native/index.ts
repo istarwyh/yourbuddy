@@ -22,13 +22,25 @@
  * the user disabled in the side-card settings is unregistered — so it is
  * absent from the native guide and `openTab` refuses it.
  */
-import type { SidebarRightGuideEntry } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type { ISidebarRight, SidebarRightCloseHandler, SidebarRightGuideEntry } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type {} from '@deepseek-ai/dsh-client-ui-plugin-manager/client'
 import type { Context } from '../../context-types.ts'
+import { addressBaseOf, resolveAddressPath } from '../address-base.ts'
+import { flushDraftBackups } from '../editor-draft-backup.ts'
 import { t } from '../locales.ts'
+import { splitTrailingLineSpec } from '../path-line.ts'
+import { baseName } from '../paths.ts'
 import { parseFileAddress } from '../resource-address.ts'
 import { isNativeDocumentPath } from './file-types.ts'
+import type { ContextDiagnostics } from '../context-diagnostics.ts'
 import type { BetterSidebarService, TabDescriptor } from '../service.ts'
 import type { SidebarStore } from '../state.ts'
+import { webTerminals } from '../terminal-client.ts'
+import type { NativeGuideCatalog } from './guide-catalog.ts'
+import { NativeGuide } from './guide.tsx'
+import { EDITOR_KIND, FILES_KIND, nativeId } from './guide-ids.ts'
+import { mountedSessionId } from './surface.ts'
 import {
   NativeTabBody,
   NativeTabTitle,
@@ -81,20 +93,9 @@ function hostOwnedPath(path: string): boolean {
   return dot > 0 && HOST_OWNED_EXTS.has(name.slice(dot + 1).toLowerCase())
 }
 
-/** The kind the plugin's files window owns (page + file viewer). */
-const EDITOR_KIND = 'editor'
-
-/** The built-in page kind this plugin takes over. */
-const FILES_KIND = 'files'
-
-/** The plugin's implementation id for a descriptor (unique across kinds). */
-function nativeId(descriptorId: string): string {
-  return `dsh-better-sidebar:${descriptorId}`
-}
-
-/** Tab descriptors eligible for adaptation into DSH's native right Sidebar. */
+/** Tab descriptors eligible for the native right Sidebar. */
 export function nativeTabDescriptors(service: BetterSidebarService): readonly TabDescriptor[] {
-  return service.getTabs().filter(descriptor => descriptor.native !== false && service.isTabEnabled(descriptor.id))
+  return service.getTabs().filter(descriptor => descriptor.native !== false && descriptor.bottomOnly !== true && service.isTabEnabled(descriptor.id))
 }
 
 /** The descriptor's title text, evaluated fresh for the current locale. */
@@ -138,13 +139,80 @@ function guideIconOf(icon: TabDescriptor['icon']): Pick<SidebarRightGuideEntry, 
 function fileTitleOf(address: string): string | undefined {
   const parsed = parseFileAddress(address)
   if (parsed === undefined) return undefined
-  const segments = parsed.path.split('/').filter(segment => segment !== '')
+  // A `path:line` spec DSH's markdown grammar left in the address names a
+  // LINE, not a file: the tab is titled after the file (#826).
+  const path = splitTrailingLineSpec(parsed.path)?.path ?? parsed.path
+  const segments = path.split('/').filter(segment => segment !== '')
   return segments.length === 0 ? undefined : segments[segments.length - 1]
 }
 
 /** One descriptor's live native registrations. */
 interface Registration {
   readonly dispose: () => void
+}
+
+/**
+ * The plugin-side seed a file-address tab carries.
+ *
+ * The path comes from the address, and that is also where a `path:line` spec
+ * the host's markdown grammar left in it has to come off: DSH reads a `#`-less
+ * destination as the file name verbatim, so `[a/b.c](a/b.c:131)` addresses a
+ * file called `b.c:131` and the editor reports it missing (#826). The tab
+ * TITLE is seeded from the same spec, because the host derives it from the same
+ * string and would otherwise label the tab `b.c:131`.
+ *
+ * The LINE rides along in the same seed. DSH's own `#L131` form already
+ * arrives as `navigation.params.line` (the host parses it and sends it down),
+ * so seeding it here is what makes both spellings land on the same row — see
+ * {@link NativeTabParams.line}. The range end and the column are deliberately
+ * dropped: {@link splitTrailingLineSpec} parses them, and a start line is all
+ * the editor has anywhere to put a cursor.
+ *
+ * `base` is where an address-relative path is resolved, and it must be the
+ * base the ADDRESS was built with — the session's stored header cwd, see
+ * `src/client/address-base.ts` — never the tab body's worktree root. Without
+ * it the seed stays relative and every downstream reader (the viewer's
+ * `fs.read`, the editor, the directory watch) re-bases it on the ACTIVE
+ * worktree: a chat link to `<repo>/frontend/.worktrees/wt/a.md` arrives as
+ * `frontend/.worktrees/wt/a.md` and is joined onto the worktree root a second
+ * time (#947), or silently reads the same-named file of another checkout
+ * (#950). Omitted (a caller with no session context) keeps the historical
+ * relative seed.
+ * @param info - the native tab record the body is drawing.
+ * @param base - the address's own base, when the caller knows it.
+ * @returns the seed, or `undefined` when the tab is not a file address.
+ */
+export function fileParamsOf(info: NativeTabInfo, base?: string): NativeTabParams | undefined {
+  const address = parseFileAddress(info.tab.contentId)
+  if (address === undefined) return undefined
+  // Resolve BEFORE the trailing line spec is split off: the spec belongs to
+  // the file name, and a base can only be prepended to the path.
+  const path = base === undefined ? address.path : resolveAddressPath(base, address.path)
+  const spec = splitTrailingLineSpec(path)
+  if (spec === undefined) return { path }
+  return { path: spec.path, title: baseName(spec.path), line: spec.line }
+}
+
+/**
+ * Run one registration disposer, reporting a failure instead of propagating
+ * it: releasing a registration must never mask the error being handled, and
+ * one broken entry must not leave the others registered.
+ *
+ * A release failure is logged, NOT routed through `reportFailure` (the visible
+ * diagnostic strip), on purpose: both callers run while the surface is being
+ * taken down — the drop loop and the seat teardown — where a strip would just
+ * be noise, and an id that really stays taken cannot hide anyway: the next
+ * registration attempt for it goes through the strip as
+ * `register … error: … already registered`.
+ * @param dispose - the disposer to run.
+ * @param what - the registration's name, for the log line.
+ */
+function disposeSafely(dispose: () => void, what: string): void {
+  try {
+    dispose()
+  } catch (error) {
+    console.error(`[dsh-better-sidebar] ${what} release failed:`, error)
+  }
 }
 
 /** Everything the registrations need. */
@@ -154,6 +222,21 @@ export interface NativeSurfaceDeps {
   readonly service: BetterSidebarService
   /** The shared native tab record registry (the surface writes it too). */
   readonly records: NativeTabRecords
+  /**
+   * The live catalog of host guide cards. When present, the plugin replaces
+   * the shipped guide page with its own start page; omitted keeps the host's
+   * guide untouched (the unit harnesses use this to exercise the original
+   * surface without mounting the start page).
+   */
+  readonly guideCatalog?: NativeGuideCatalog
+  /**
+   * The activation's optional dsh-context diagnostics controller (see
+   * ../context-diagnostics.ts). Forwarded into the tab bodies' injected bag,
+   * because a native body renders in the HOST's React tree and cannot read the
+   * plugin shell's provider. Omitted = the bodies render without the
+   * diagnostics entry points.
+   */
+  readonly diagnostics?: ContextDiagnostics
   /**
    * Report a tab-type registration failure (phase label + cause).
    *
@@ -175,7 +258,16 @@ export interface NativeSurfaceDeps {
  * @returns a disposer unregistering everything.
  */
 export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
-  const { ctx, store, service, records, reportFailure } = deps
+  const { ctx, store, service, records, reportFailure, diagnostics, guideCatalog } = deps
+  // Bind the store BEFORE any body can render: the per-session state is the
+  // authority for the explorer's expansion set, so the native surface and the
+  // workbench share one set per session and a closed tab cannot drop it.
+  // (Restored after the v0.22.1 merge: main's branch rewrote this function
+  // without the call, and taking that file wholesale silently disabled every
+  // folder toggle — the records then have no store to read from or write to,
+  // so `toggleExpanded` returns without touching anything. Only the real-host
+  // lane could see it; the jsdom specs bind the records themselves.)
+  records.attachStore(store)
   // Wait for the tab-type REGISTRY (a service), not for the slot declaration:
   // the native seat declares `sidebar.right.pane.tab` BEFORE it provides
   // `sidebarRightTabs`, so a declaration-triggered registration reads the
@@ -185,37 +277,159 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
   // `sidebarRightTabs` undefined, and the registry appeared a moment later.
   // `ctx.inject` re-runs this body whenever the service appears/reappears,
   // which is the lifecycle the registrations need.
-  const seat = ctx.inject(['sidebarRightTabs'], (injected) => {
+  const seat = ctx.inject(['sidebarRightTabs', 'sidebarRight'], (injected) => {
     const tabs = injected.get('sidebarRightTabs')
     if (tabs === undefined) return
+    const right = injected.get('sidebarRight') as (ISidebarRight & { registerCloseHandler(kind: string, handler: SidebarRightCloseHandler): () => void }) | undefined
     const live = new Map<string, Registration>()
 
-    const fileParamsOf = (info: NativeTabInfo): NativeTabParams | undefined => {
-      const address = parseFileAddress(info.tab.contentId)
-      return address === undefined ? undefined : { path: address.path }
+    // The host runs this hook before removing a record (the strip's ×, its
+    // context menu, `page.close`, and a `replaceTab`). Flush the throttled
+    // draft here so the keystrokes of the last second survive the body's
+    // unmount; the hook is a synchronous cleanup, not a veto, so it cannot
+    // ask first (see editor-draft-backup.ts).
+    let disposeClose: (() => void) | undefined
+    if (typeof right?.registerCloseHandler === 'function') {
+      try {
+        disposeClose = right.registerCloseHandler(EDITOR_KIND, () => { flushDraftBackups() })
+      } catch (error) {
+        reportFailure?.('register editor close handler', error)
+      }
     }
+
+    // The start page: replace the host guide body with the plugin's own grid.
+    // Its lifetime follows the `guideTakeover` preference, so turning the
+    // switch off unregisters the chain entry and the shipped guide resumes.
+    let disposeGuide: (() => void) | undefined
+    const syncGuide = (): void => {
+      if (guideCatalog === undefined) return
+      if (store.getPrefs().guideTakeover === false) {
+        if (disposeGuide !== undefined) {
+          disposeSafely(disposeGuide, 'the start-page guide takeover')
+          disposeGuide = undefined
+        }
+        return
+      }
+      if (disposeGuide !== undefined) return
+      const catalog = guideCatalog
+      try {
+        disposeGuide = ctx.slots.inject('sidebar.right.tab.guide', () => {
+          try {
+            return ctx.slots.register({
+              name: 'sidebar.right.tab.guide',
+              // Always elect: the shipped guide is the fallback we replace.
+              select: () => ({}),
+              inject: (sessionId: string) => {
+                const scope = typeof sessionId === 'string' && sessionId !== ''
+                  ? sessionId
+                  : mountedSessionId(ctx)
+                const terminals = webTerminals(ctx)
+                const navigation = ctx.get('pluginNavigation')
+                const workspace = ctx.get('uiWorkspace')
+                const onBrowsePlugins = typeof navigation?.openList === 'function'
+                  ? () => { navigation.openList!() }
+                  : undefined
+                const onCreatePlugin = typeof workspace?.startSession === 'function'
+                  ? () => {
+                    workspace.startSession!(undefined, {
+                      agentPreset: 'cordis',
+                      prompt: t('guideCreatePrompt'),
+                      whenDraftExists: 'append',
+                    })
+                  }
+                  : undefined
+                const shellMenu = scope !== undefined
+                  && terminals?.launchShells !== undefined
+                  && terminals?.selectShell !== undefined
+                  ? {
+                    // Call the methods on the SERVICE: the shell catalog reads
+                    // its own remote field, and a detached call throws
+                    // "Cannot read properties of undefined (reading 'remote')".
+                    launchShells: (signal: AbortSignal) => terminals.launchShells!(scope, signal),
+                    selectShell: (path: string) => { terminals.selectShell!(path) },
+                  }
+                  : undefined
+                return {
+                  catalog,
+                  store,
+                  service,
+                  ...(shellMenu === undefined ? {} : { shellMenu }),
+                  ...(onBrowsePlugins === undefined ? {} : { onBrowsePlugins }),
+                  ...(onCreatePlugin === undefined ? {} : { onCreatePlugin }),
+                }
+              },
+            }, NativeGuide)
+          } catch (error) {
+            reportFailure?.('register start page', error)
+            return () => {}
+          }
+        })
+      } catch (error) {
+        reportFailure?.('register start page', error)
+      }
+    }
+
     const fileSessionIdOf = (info: NativeTabInfo): string | undefined => {
       const address = parseFileAddress(info.tab.contentId)
       return address !== undefined && address.scope === 'session' ? address.sessionId : undefined
     }
 
-    /** Register the body + chip-title slots for one native implementation id. */
+    /**
+     * Register the body + chip-title slots for one native implementation id.
+     *
+     * A slot registration can fail long after the TYPE registration succeeded
+     * (`ctx.effect` on a context that is already inactive, i.e. during a
+     * plugin reload/disposal), so the disposers are collected as they are
+     * handed out and the partial set is released on the way out: the caller
+     * must be able to roll its type registration back WITHOUT losing track of
+     * a slot that did register.
+     */
     const registerSlots = (
       id: string,
       injected: Omit<NativeBodyInjected, 'sessionId'>,
       params: Pick<NativeBodyInjected, 'paramsOf' | 'sessionIdOf'>,
-    ): Array<() => void> => [
-      ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
-        name: 'sidebar.right.pane.tab',
-        key: id,
-        inject: (sessionId: string) => ({ ...injected, ...params, sessionId }),
-      }, NativeTabBody)),
-      ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
-        name: 'sidebar.right.pane.tab.title',
-        key: id,
-        inject: () => ({ records, service, descriptorId: injected.descriptorId }),
-      }, NativeTabTitle)),
-    ]
+    ): Array<() => void> => {
+      // Collected AS THEY ARE HANDED OUT: a slot registration can fail long
+      // after the TYPE registration succeeded (a plugin reload makes
+      // `ctx.slots.inject` throw on the now-inactive context), and the caller
+      // must then be able to release the type again WITHOUT losing track of a
+      // slot that did register.
+      const disposers: Array<() => void> = []
+      try {
+        disposers.push(ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+          name: 'sidebar.right.pane.tab',
+          key: id,
+          // The diagnostics controller rides the SAME injected bag every body
+          // already receives (a native body renders in the host's tree, so the
+          // plugin shell's provider is out of reach); the adapter turns it into
+          // the provider around the body it draws.
+          inject: (sessionId: string) => ({ ...injected, ...params, sessionId, ...(diagnostics === undefined ? {} : { diagnostics }) }),
+        }, NativeTabBody)))
+        disposers.push(ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
+          name: 'sidebar.right.pane.tab.title',
+          key: id,
+          // The chip draws a FILE tab's own glyph, so it needs the same
+          // address-derived seed the body gets: a file tab's address names the
+          // file it shows, and the chip must be able to draw it BEFORE — and
+          // without — the plugin-side record, which exists only after the body
+          // has rendered (and is gone again once the body unmounts).
+          // The chip is also drawn per session and BEFORE the body, so it needs
+          // its own session id: every session's tabs live in one registry, and
+          // a chip that guessed the session would show another one's title.
+          inject: (sessionId: string) => ({
+            records,
+            service,
+            descriptorId: injected.descriptorId,
+            sessionId,
+            ...(params.paramsOf === undefined ? {} : { paramsOf: params.paramsOf }),
+          }),
+        }, NativeTabTitle)))
+      } catch (error) {
+        for (const dispose of disposers) disposeSafely(dispose, `native tab slot "${id}"`)
+        throw error
+      }
+      return disposers
+    }
 
     /** One descriptor's native type + body + title, as one disposable. */
     const registerDescriptor = (descriptor: TabDescriptor): (() => void) => {
@@ -225,6 +439,11 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
       const disposeType = tabs.register({
         id,
         kind: descriptor.id,
+        // 0.1.7: the host keeps a visited body MOUNTED through hiding,
+        // tab selection and Session switches, so the plugin's own React state
+        // (records, tree expansion, scroll, unsaved drafts) survives without
+        // the adapter faking it.
+        keepMounted: true,
         ...(isEditor
           ? {
             patterns: ['dsh-resource://file/**'],
@@ -262,14 +481,32 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
             }],
           }),
       })
-      const slots = registerSlots(
-        id,
-        { ctx, store, service, records, descriptorId: descriptor.id },
-        isEditor ? { paramsOf: fileParamsOf, sessionIdOf: fileSessionIdOf } : {},
-      )
+      // The type is in the host's registry the moment `tabs.register`
+      // returns; a slot failure must release it here, or the id stays taken
+      // for the rest of the page's life (the host refuses a second
+      // registration of the same id) and the tab kind renders the host's
+      // "nothing can view this" face forever.
+      let slots: Array<() => void>
+      try {
+        slots = registerSlots(
+          id,
+          { ctx, store, service, records, descriptorId: descriptor.id },
+          isEditor
+            ? {
+              // The address's own session, not the seat's: a file address
+              // carries the session whose workspace resolves its path.
+              paramsOf: (info: NativeTabInfo) => fileParamsOf(info, addressBaseOf(ctx, fileSessionIdOf(info))),
+              sessionIdOf: fileSessionIdOf,
+            }
+            : {},
+        )
+      } catch (error) {
+        disposeSafely(disposeType, `native tab type "${id}"`)
+        throw error
+      }
       return () => {
-        for (const dispose of slots.reverse()) dispose()
-        disposeType()
+        for (const dispose of slots.reverse()) disposeSafely(dispose, `native tab slot "${id}"`)
+        disposeSafely(disposeType, `native tab type "${id}"`)
       }
     }
 
@@ -279,6 +516,7 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
       const disposeType = tabs.register({
         id,
         kind: FILES_KIND,
+        keepMounted: true,
         priority: 'extension',
         title: () => t('files'),
         guide: [{
@@ -295,28 +533,45 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
           ...guideIconOf(editor?.icon),
         }],
       })
-      const slots = registerSlots(id, { ctx, store, service, records, descriptorId: EDITOR_KIND }, {})
+      let slots: Array<() => void>
+      try {
+        slots = registerSlots(id, { ctx, store, service, records, descriptorId: EDITOR_KIND }, {})
+      } catch (error) {
+        disposeSafely(disposeType, `native tab type "${id}"`)
+        throw error
+      }
       return () => {
-        for (const dispose of slots.reverse()) dispose()
-        disposeType()
+        for (const dispose of slots.reverse()) disposeSafely(dispose, `native tab slot "${id}"`)
+        disposeSafely(disposeType, `native tab type "${id}"`)
       }
     }
 
     /** Bring the live registrations in line with the registry + the settings. */
     const sync = (): void => {
+      syncGuide()
       const wanted = new Map<string, () => () => void>()
       for (const descriptor of nativeTabDescriptors(service)) {
         wanted.set(descriptor.id, () => registerDescriptor(descriptor))
       }
       for (const [descriptorId, registration] of live) {
-        if (wanted.has(descriptorId)) continue
-        registration.dispose()
+        // `files` is this module's OWN takeover, never a descriptor (`wanted`
+        // only ever holds descriptor ids): its lifetime belongs to the
+        // editor-type switch below. Disposing it here on EVERY notification
+        // (any prefs/state pulse, a Session switch included) re-mounted the
+        // explorer body and lost the tree's own component state — and a
+        // re-registration attempted on an already-inactive context (a plugin
+        // reload) left the type registered with nobody holding its disposer,
+        // so the same id could never be registered again for the rest of the
+        // page's life.
+        if (descriptorId === FILES_KIND || wanted.has(descriptorId)) continue
+        disposeSafely(() => registration.dispose(), `native tab type "${descriptorId}"`)
         live.delete(descriptorId)
       }
       for (const [descriptorId, create] of wanted) {
         if (live.has(descriptorId)) continue
         // One descriptor must not take the rest of the surface down with it:
-        // report and continue so the remaining types still register.
+        // report and continue so the remaining types still register. `create`
+        // has already released whatever it managed to install.
         try {
           live.set(descriptorId, { dispose: create() })
         } catch (error) {
@@ -335,17 +590,22 @@ export function registerNativeSurface(deps: NativeSurfaceDeps): () => void {
         }
       }
       if (!wantsFiles && hasFiles) {
-        live.get(FILES_KIND)?.dispose()
+        const takeover = live.get(FILES_KIND)
         live.delete(FILES_KIND)
+        if (takeover !== undefined) disposeSafely(() => takeover.dispose(), 'the native "files" takeover')
       }
     }
 
     const disposeSubscriptions = [service.subscribe(sync), store.subscribe(sync)]
     sync()
     return () => {
-      for (const registration of live.values()) registration.dispose()
+      for (const registration of live.values()) {
+        disposeSafely(() => registration.dispose(), 'a native tab registration')
+      }
       live.clear()
-      for (const dispose of disposeSubscriptions.reverse()) dispose()
+      for (const dispose of disposeSubscriptions.reverse()) disposeSafely(dispose, 'a native tab subscription')
+      if (disposeClose !== undefined) disposeSafely(disposeClose, 'the editor close handler')
+      if (disposeGuide !== undefined) disposeSafely(disposeGuide, 'the start-page guide takeover')
     }
   })
   return () => {

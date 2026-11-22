@@ -7,7 +7,7 @@ import type { ChatNode, ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/cli
 import { keyedObservableHook } from '../../ui-renderer/src/client/bindings.tsx'
 import { ChatSnapshotBuilder, chatViewDefinition } from '../../ui-chat/src/client/conversation-nodes/chat-snapshot-builder.ts'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
+import { allowAllAccess, contextMenuHook, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
 import { en, zh } from '../src/client/locales.ts'
@@ -35,11 +35,14 @@ function unused(): never { throw new Error('PlanReviewOpen does not consume this
 /** The opener's props share; each test supplies the on-screen Session hook beside it. */
 function reviewProps(review: Parameters<typeof PlanReviewOpen>[0]['review'], openReview: Mock, store: ReturnType<ReturnType<typeof createPlanReviewStore>['create']>) {
   return {
+    ...allowAllAccess, useContextMenu: contextMenuHook(),
     useSession: unused, useProjection: unused, useConversation: unused, useInput: unused,
     useChat: unused, useTrajectory: unused, useSessions: unused, useSessionStatus: unused,
     useSessionRetainInfo: unused, useWorkspaces: unused, usePanelInfo: unused, useResource: unused,
-    inputActions: { captureInsertion: unused, insertText: unused, setDraft: unused, addAttachments: unused,
-      removeAttachment: unused, pruneAttachments: unused, submit: unused },
+    inputActions: {
+      captureInsertion: unused, insertText: unused, insertQuote: unused, persistDraft: unused, setDraft: unused,
+      addAttachments: unused, removeAttachment: unused, pruneAttachments: unused, submit: unused,
+    },
     review, sessionId: target.session.sessionId, requestKey: 'question:1', t, openReview, actions: store.actions,
     useStore: <S,>(select: (state: ReturnType<typeof store.getSnapshot>) => S): S => select(store.getSnapshot()),
   } satisfies Omit<Parameters<typeof PlanReviewOpen>[0], 'useSidebarMounted'>
@@ -356,7 +359,6 @@ describe('plan entry points and document', () => {
     expect(screen.getByRole('status').textContent).toBe(dictionary['preview.unavailable'])
     for (const [code, message] of [
       ['plan/invalid-address', dictionary['preview.invalidAddress']],
-      ['plan/unavailable', dictionary['preview.historyUnavailable']],
       ['plan/not-found', dictionary['preview.notFound']],
       ['plan/read-failed', 'connection lost'],
       ['session/not-found', 'connection lost'],

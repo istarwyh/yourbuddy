@@ -50,6 +50,8 @@ It works with TikTok, Instagram, YouTube and X as well as Chinese platforms (Red
 <td valign="top">
 <p><b>Everything fills in together.</b></p>
 <p>The layout appears as soon as you open an idea. The title, script, cover, images and six storyboard frames are generated in parallel and appear as each one is ready.</p>
+<p><b>Script or article, your call.</b></p>
+<p>A script puts one sentence per line in short blocks, ready to read aloud. An article is written in full paragraphs, ready to post. Both get a headline, and both stay close to the style and reference you chose.</p>
 <p><b>Ask for a change.</b></p>
 <p>Try "make it clearer", "shoot frame 3 from above" or "bolder cover text". The draft updates as you watch, and every change can be undone.</p>
 <p><b>Take it with you.</b></p>
@@ -150,9 +152,23 @@ It works with TikTok, Instagram, YouTube and X as well as Chinese platforms (Red
 
 Requires DeepSeek Harness `0.2.1-rc.5` or later in the `0.2.x` line. Tested on `0.2.2-rc.1`, desktop and web.
 
-**1. Install.** In the DeepSeek Harness desktop app, go to Plugins → Add plugin, enter `dsh-media-desk`, and install.
+**1. Install.** Open **Plugins** in the DeepSeek Harness sidebar and switch on the experimental index support: on DSH `0.2.2` and later it is **Custom plugin indexes** under **Experimental plugins**; on the `0.2.1` line it is **Custom plugin markets**, under **More** beside **Experimental plugins**. The page then shows the **Installed** and **Discover** tabs.
 
-You can also install from the command line. Quit the desktop app completely (⌘Q) first and reopen it afterwards. For the web version, restart `dsh web`. If the `dsh` command isn't available in your terminal, choose "Manage dsh command" from the desktop app's menu.
+Switch to **Discover** and add this index URL — once is enough:
+
+```
+https://raw.githubusercontent.com/woniuniuniu/dsh-media-desk/main/index.json
+```
+
+If github.com is hard to reach from your network, use this CDN mirror instead — it can lag up to 12 hours behind the latest release:
+
+```
+https://cdn.jsdelivr.net/gh/woniuniuniu/dsh-media-desk@main/index.json
+```
+
+**Media Desk** shows up in the list; install it from there. It installs the same `dsh-media-desk` npm package, the index just saves typing the package name.
+
+Without the index, go to Plugins → Add plugin, enter `dsh-media-desk`, and install. You can also install from the command line. Quit the desktop app completely (⌘Q) first and reopen it afterwards. For the web version, restart `dsh web`. If the `dsh` command isn't available in your terminal, choose "Manage dsh command" from the desktop app's menu.
 
 ```bash
 dsh plugin --profile desktop add dsh-media-desk
@@ -162,7 +178,7 @@ dsh plugin --profile desktop add dsh-media-desk
 dsh plugin --profile web add dsh-media-desk
 ```
 
-**2. Update.** When a new version comes out, update it on the Plugins page or run the same command again. To install offline, download `dsh-media-desk-*.tgz` from [Releases](https://github.com/woniuniuniu/dsh-media-desk/releases/latest) and use `"file:$PWD/dsh-media-desk-VERSION.tgz"` in place of the package name.
+**2. Update.** When a new version comes out, the Plugins page shows an update — click it; a command-line install runs the same command again. Media Desk also checks npm itself (at most once an hour, reading only the version number): when a newer version exists the top bar shows `↑ vX.Y.Z`, Settings shows the version you are on, and the badge opens the npm page with the upgrade command. To install offline, download `dsh-media-desk-*.tgz` from [Releases](https://github.com/woniuniuniu/dsh-media-desk/releases/latest) and use `"file:$PWD/dsh-media-desk-VERSION.tgz"` in place of the package name.
 
 **3. Open.** **Media Desk** appears in the sidebar. On first launch it's filled with sample data so you can explore every page. Click **Clear sample data** in the top right when you're ready to start with your own.
 
@@ -178,12 +194,24 @@ The plugin is free and ships with no API keys. Anything that uses a model runs o
 | | What it uses | Without it |
 | --- | --- | --- |
 | **Script** | The model you've set up in DeepSeek Harness | A structural outline only |
-| **Cover, images, storyboard** | Your own image API key, added in the plugin settings | Script and storyboard text still work, and the cover is made from text |
+| **Cover, images, storyboard** | Your image API key, or a registered DSH subscription image tool, selected in settings | Script and storyboard text still work, and the cover is made from text |
 | **Account import** (optional) | Monid, a third-party data service billed per request. Under a cent per TikTok, Instagram or X account; about $0.02 for RedNote | Enter numbers by hand, or paste posts to learn a style |
 
-Images work with any service compatible with the OpenAI Images API (`POST {endpoint}/images/generations`). OpenAI, xAI, Volcengine Ark, Zhipu and SiliconFlow come pre-filled, or you can add a custom endpoint. Click **Generate test image** to check that it works. Each draft makes 9 images by default, and you can change that. Your key is stored only in the local `settings.json` (file mode 600). It never goes into your content data and is never sent to the text model.
+Images work with any service compatible with the OpenAI Images API (`POST {endpoint}/images/generations`), and with Alibaba Bailian: Qwen-Image uses the sync endpoint, while Wan 2.5 and earlier use the async task API. OpenAI, xAI, Volcengine Ark, Zhipu, SiliconFlow, Alibaba Bailian, Bailian Token Plan and Bailian Wan (async) come pre-filled, or you can add a custom endpoint. Click **Generate test image** to check that it works. Each draft makes 9 images by default, and you can change that; you can also uncheck **Draw images** before **Draft it** to get text only this time, and draw individual images later. Your key is stored only in the local `settings.json` (file mode 600). It never goes into your content data and is never sent to the text model.
 
 <br>
+
+### Use DSH generation tools
+
+Reuse subscription image generation made available to DSH by a plugin. For example, if a plugin lets you generate images in DSH with a ChatGPT (GPT) subscription, Media Desk can reuse that capability without a separate image API key. Subscriptions from other services also require plugin-provided image generation supported by Media Desk; signing in or connecting a chat model alone does not enable it. Currently supports `dsh-plugin-subscriptions`, which controls service and account selection and fallback.
+
+In Settings, choose **DSH generation tools** as the image source to reuse `image_generate` registered by `dsh-plugin-subscriptions` (including its collision alias). No additional API key is needed. Existing HTTP settings (including size and quality) are preserved; tool size and quality are configured separately, and Image API remains the default. Detection only confirms a compatible registration and a direct-call schema from the default executor, not sign-in or quota; **Generate test image** makes a real request and consumes subscription quota. Name/schema checks do not authenticate plugin identity; enable only trusted tool plugins.
+
+The host must support `tools.executable()`, `tools.selectExecutor().describe()` and standalone `tools.execute()` batches (public contracts verified against DSH 0.2.2-rc.1). Calls go through the host execution pipeline without reading credentials or importing subscription-plugin internals. Only images inside the DSH home `plugins/subscriptions/images/` directory are imported into the existing Media Desk asset workflow. Discovery currently checks only `dsh_subscriptions_image_generate` and `image_generate`, not arbitrary tool names. Other plugins must also match the parameters, output structure and output directory even when the name matches. Tools registered only in an Agent-private scope are unavailable.
+
+This is an independent background service operation, not a call on behalf of the visible chat session: it does not inherit that session's restrictions, historical toggles or account affinity. Global host tool policies and current subscription-tool preferences still apply. Approval-required calls without a suitable session fail closed. The tool owns provider/account selection and fallback (for example, Grok may be used when ChatGPT is logged out); Media Desk never falls back to HTTP or adds retries to tool requests.
+
+A pure Code Mode / PTC executor currently rejects direct root image-tool calls and is detected as unavailable. Use a native executor supporting direct calls or HTTP images. Missing tools or unsupported host APIs do not affect existing HTTP functionality.
 
 ## Import your own account
 
@@ -235,6 +263,14 @@ Yes. The script, title and storyboard text are written as usual, and the cover i
 </details>
 
 <details>
+<summary><b>Do I have to generate images every time?</b></summary>
+<br>
+
+No. Uncheck **Draw images** next to **Draft it** and that draft gets only the title, cover text, script and storyboard text; you can also change the default in settings. Add images later with **Draw cover** or **Draw this** on any single frame. Without an image model, drawing is skipped anyway and the saved cover is composed from text.
+
+</details>
+
+<details>
 <summary><b>Is this made by DeepSeek?</b></summary>
 <br>
 
@@ -253,15 +289,44 @@ I'm [蜗牛的科技笔记](https://www.xiaohongshu.com/user/profile/5faedce8000
 - The [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) team, for an open plugin system to build on.
 - [dsh-Go](https://github.com/ccch1mneyyy/dsh-Go), whose README layout inspired this one.
 
+### Special thanks
+
+To the people who tried it carefully, tracked problems down and sent fixes:
+
+- [secountAiAccount](https://github.com/secountAiAccount), for spotting the unreadable style dropdown in dark mode ([#1](https://github.com/woniuniuniu/dsh-media-desk/issues/1)) and the settings icon that looked like a theme toggle ([#2](https://github.com/woniuniuniu/dsh-media-desk/issues/2))
+- [isxiaokunos](https://github.com/isxiaokunos), for pinning down why image gateways that return relative URLs always failed, were misreported and needlessly retried, with a patch and real measurements ([#3](https://github.com/woniuniuniu/dsh-media-desk/issues/3))
+- [townmi (Harry Tang)](https://github.com/townmi), for finding that opencode-go needs a session header and that the panel misreported the failure as "offline" ([#4](https://github.com/woniuniuniu/dsh-media-desk/issues/4))
+- [zach22-1999](https://github.com/zach22-1999), for fixing the crash when importing X posts whose media field isn't a list ([#6](https://github.com/woniuniuniu/dsh-media-desk/pull/6))
+- [chenxupeng1990-eng](https://github.com/chenxupeng1990-eng), for letting the assistant use any connected model instead of only the DSH default ([#5](https://github.com/woniuniuniu/dsh-media-desk/pull/5))
+- [dsh-agent-sixtyseven](https://github.com/dsh-agent-sixtyseven), for tracking down why account import on Windows kept saying "Monid isn’t installed yet" and fixing both how the command is found and how it's run ([#7](https://github.com/woniuniuniu/dsh-media-desk/issues/7), [#8](https://github.com/woniuniuniu/dsh-media-desk/pull/8))
+- [smallflycar](https://github.com/smallflycar), for letting the desk draw images with a GPT subscription, no separate image API needed ([#9](https://github.com/woniuniuniu/dsh-media-desk/pull/9))
+- [cofftea114](https://github.com/cofftea114), for pointing out that the desk has no entry once another plugin takes over the left sidebar, and for showing how to mount it as a dsh-better-sidebar tab ([#10](https://github.com/woniuniuniu/dsh-media-desk/issues/10))
+- [Feahter](https://github.com/Feahter), for the plugin market index that makes the desk a one-click install from Discover, validation and tests included ([#11](https://github.com/woniuniuniu/dsh-media-desk/pull/11)), and for the built-in version check that flags new releases in the top bar and shows the current version in Settings ([#19](https://github.com/woniuniuniu/dsh-media-desk/pull/19))
+- [TerryWang9112 (Terry)](https://github.com/TerryWang9112), for adding Alibaba Cloud Bailian and Wan image generation, and for letting each draft skip images ([#12](https://github.com/woniuniuniu/dsh-media-desk/pull/12))
+- [ytzhangFTD](https://github.com/ytzhangFTD), for noticing that an idea's notes disappear inside the studio and pinpointing the missing render path ([#13](https://github.com/woniuniuniu/dsh-media-desk/issues/13))
+- [giuliano1101](https://github.com/giuliano1101), for finding that stats for the same post could be counted twice ([#15](https://github.com/woniuniuniu/dsh-media-desk/issues/15)) and that saving again overwrote hand edits in the export folder ([#16](https://github.com/woniuniuniu/dsh-media-desk/issues/16)), and for building a full take on multiple accounts, a CLI and MCP server, and version history that we're learning from ([#14](https://github.com/woniuniuniu/dsh-media-desk/pull/14))
+- [wmaly13](https://github.com/wmaly13), for spotting the off-centre Script / Article labels in the format switch and suggesting sub-ideas under an idea ([#18](https://github.com/woniuniuniu/dsh-media-desk/issues/18))
+
+[Issues](https://github.com/woniuniuniu/dsh-media-desk/issues) are always welcome. Every one gets read.
+
+### Contributors
+
+Thanks to everyone who has contributed code:
+
+[![Contributors](https://contrib.rocks/image?repo=woniuniuniu/dsh-media-desk)](https://github.com/woniuniuniu/dsh-media-desk/graphs/contributors)
+
 ## Development
 
 ```bash
 npm install && npm test        # host logic tests
 npm run watch                  # rebuild when client/ changes
+npm run index                  # refresh index.json after a release
 scripts/dev-sandbox.sh         # run the web version in an isolated DSH_HOME
 node scripts/mock-llm.mjs      # mock text and image models, no quota used
 npm pack                       # build the installable tgz
 ```
+
+`index.json` is the plugin market index; `npm run index` refreshes its version and publish time from the latest npm release, so run it once after every release.
 
 `scripts/mock-monid.mjs` is a fake `monid` command that returns made-up content, so you can test the import flow for free. Wrap it as an executable named `monid` and put it first on your `PATH`.
 
@@ -269,7 +334,7 @@ npm pack                       # build the installable tgz
 | --- | --- |
 | `client/` | UI: idea wall, studio, chat, content, schedule, insights, styles, settings |
 | `src/` | Host routes, drafting pipeline, prompts, image generation, style learning, Monid import, local storage |
-| `scripts/` | Bundling, sandbox, mock models, sample asset generation |
+| `scripts/` | Bundling, sandbox, mock models, sample asset generation, market index |
 | `assets/` | Sample images and videos, all generated by `scripts/gen-assets.py` |
 | `docs/assets/` | The images on this page |
 

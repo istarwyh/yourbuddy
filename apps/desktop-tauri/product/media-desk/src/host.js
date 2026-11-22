@@ -4,20 +4,22 @@ import { execFile } from 'node:child_process'
 import { stat, writeFile } from 'node:fs/promises'
 import { dirname, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { callModel, chatPrompts, extractJson, modelInfo, modelStatus } from './ai.js'
+import { assistantModelOverride, callModel, chatPrompts, defaultSelection, extractJson, modelInfo, modelStatus, setAssistantModel } from './ai.js'
 import { defaultExportDir, resolveExportDir, saveProduction } from './export.js'
 import { harvest, harvestText } from './harvest.js'
 import { generateImage } from './images.js'
+import { generateToolImage, imageTool } from './image-tool.js'
 import { localIntent } from './intents.js'
 import { computeInsights, exportSkill, proposeRules } from './learn.js'
 import { createMonidRunner, fetchAccount, importPosts, monidStatus, postsToMaterial, resolveAccount, saveCovers } from './monid.js'
 import { applyOps, newId } from './ops.js'
 import { applyRevision, Producer } from './produce.js'
 import { publicSettings, Settings, imageReady } from './settings.js'
-import { normalizeStyle, stylePrompts } from './style.js'
+import { normalizeStyle, referenceExcerpt, stylePrompts } from './style.js'
 import { dshHome, Store } from './store.js'
 import { currentLang, platformName, tr, withLang } from './i18n.js'
 import { localizeSamples, samplesNeedLocale } from './seed.js'
+import { createVersionCheck } from './version.js'
 
 const ASSETS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'assets')
 const MAX_JSON = 4_000_000
@@ -126,7 +128,7 @@ async function chatTurn(ctx, store, desk, body) {
     plan = localIntent(snapshot, message, { focusId })
   }
   const settings = await desk.settings.read()
-  const canDraw = imageReady(settings)
+  const canDraw = desk.producer.ready(settings)
   // 只把真正改了数据的那一步放进撤销；问一句话不占撤销位
   const changed = await store.mutate(tr('对话：{text}', { text: message.slice(0, 18) }), (draft) => {
     const target = focusId ? draft.items.find(row => row.id === focusId) : null
@@ -203,7 +205,7 @@ async function styleFromMaterial(ctx, store, { material, name, source, sourceUrl
   return store.mutate(tr('提炼风格「{name}」', { name: style.name }), (draft) => {
     const existing = accountKey ? (draft.styles ?? []).find(row => row.accountKey === accountKey) : null
     const id = existing?.id ?? newId('st')
-    const row = { id, ...style, source, sourceUrls, ...(accountKey ? { accountKey } : {}), createdAt: existing?.createdAt ?? new Date().toISOString() }
+    const row = { id, ...style, reference: referenceExcerpt(material), source, sourceUrls, ...(accountKey ? { accountKey } : {}), createdAt: existing?.createdAt ?? new Date().toISOString() }
     draft.styles = existing ? draft.styles.map(entry => (entry.id === id ? row : entry)) : [row, ...(draft.styles ?? [])]
     draft.activeStyleId = id
     return { id, failures, state: draft }
@@ -309,9 +311,24 @@ async function route(ctx, store, desk, req, res) {
       const item = state.items.find(row => row.id === id)
       return json(res, 200, { production: item?.production ?? null, status: item?.status, live: desk.producer.status(id) })
     }
-    if (path === 'settings') return json(res, 200, { ...publicSettings(await desk.settings.read()), defaultExportDir: defaultExportDir() })
+    if (path === 'settings') return json(res, 200, { ...publicSettings(await desk.settings.read(), Boolean(imageTool(ctx))), defaultExportDir: defaultExportDir() })
+    if (path === 'models') {
+      // 列出 Harness 里已接的提供方和它们公布的模型，给工作台的助手模型选择器用
+      const llm = ctx.get('llm')
+      const providers = llm ? await llm.listProviders() : []
+      const settled = await Promise.allSettled(providers.map(async p => ({
+        provider: p.id, name: p.name,
+        models: (await llm.listModels(p.id)).map(m => ({ id: m.id, name: m.name || m.id })),
+      })))
+      return json(res, 200, {
+        providers: settled.filter(r => r.status === 'fulfilled').map(r => r.value).filter(p => p.models.length),
+        default: defaultSelection(ctx),
+        current: assistantModelOverride(),
+      })
+    }
     if (path === 'insights') return json(res, 200, computeInsights(await store.read()))
     if (path === 'monid/status') return json(res, 200, await monidStatus(desk.monid))
+    if (path === 'version') return json(res, 200, await desk.versionCheck.read())
     return json(res, 404, { error: tr('接口不存在') })
   }
   if (method !== 'POST') return json(res, 405, { error: tr('不支持的方法') })
@@ -341,7 +358,7 @@ async function route(ctx, store, desk, req, res) {
       return json(res, 200, { state })
     }
     case 'produce': {
-      const started = await desk.producer.start(String(body.id))
+      const started = await desk.producer.start(String(body.id), { withImages: body.withImages })
       return json(res, 200, { started, state: await store.read() })
     }
     case 'produce/cancel':
@@ -365,6 +382,7 @@ async function route(ctx, store, desk, req, res) {
         const target = draft.items.find(row => row.id === body.id)
         if (target?.production) {
           target.production.savedPath = saved.path
+          target.production.savedHashes = saved.hashes
           target.production.savedAt = new Date().toISOString()
         }
         return draft
@@ -382,13 +400,20 @@ async function route(ctx, store, desk, req, res) {
     }
     case 'style/extract': return json(res, 200, await extractStyle(ctx, store, body))
     case 'monid/import': return json(res, 200, await importAccountRoute(ctx, store, desk, body))
-    case 'settings':
-      return json(res, 200, { ...publicSettings(await desk.settings.update(body)), defaultExportDir: defaultExportDir() })
+    case 'settings': {
+      const before = modelInfo(ctx)
+      const updated = await desk.settings.update(body)
+      setAssistantModel(updated.assistant)
+      const after = modelInfo(ctx)
+      // 换了模型，上一个模型的失败状态不再算数
+      if (before?.provider !== after?.provider || before?.model !== after?.model) Object.assign(modelStatus, { ok: null, error: null })
+      return json(res, 200, { ...publicSettings(updated, Boolean(imageTool(ctx))), defaultExportDir: defaultExportDir(), assistantEffective: modelInfo(ctx)?.label ?? null })
+    }
     case 'settings/test': {
       const settings = await desk.settings.read()
-      if (!imageReady(settings)) return json(res, 400, { error: tr('先填好接口地址、模型和密钥') })
+      if (!desk.producer.ready(settings)) return json(res, 400, { error: tr(settings.image.source === 'tool' ? '未找到订阅生图工具，或默认执行器不支持直接调用；请检查插件和执行器后刷新工作台' : '先填好接口地址、模型和密钥') })
       await store.read()
-      const { buffer, ext } = await generateImage(settings.image, 'A single paper boat on calm water, black and white pencil line art sketch, plain white paper background, no text.')
+      const { buffer, ext } = await desk.producer.generate(settings.image, 'A single paper boat on calm water, black and white pencil line art sketch, plain white paper background, no text.')
       const name = `${newId('t')}${ext}`
       await writeFile(join(store.filesDir, name), buffer)
       return json(res, 200, { src: `media-desk/files/${name}` })
@@ -440,9 +465,15 @@ export default {
   apply(ctx) {
     const store = new Store()
     const settings = new Settings(store.root)
-    const producer = new Producer({ store, settings, callText: options => callModel(ctx, options), generate: generateImage })
+    const producer = new Producer({
+      store, settings, callText: options => callModel(ctx, options),
+      ready: saved => imageReady(saved, Boolean(imageTool(ctx))),
+      generate: (image, prompt, options) => image.source === 'tool' ? generateToolImage(ctx, image, prompt, options) : generateImage(image, prompt, options),
+    })
     const monid = createMonidRunner()
-    const desk = { settings, producer, monid }
+    const desk = { settings, producer, monid, versionCheck: createVersionCheck() }
+    // 启动时恢复用户在工作台里选过的助手模型
+    settings.read().then(saved => setAssistantModel(saved.assistant)).catch(() => {})
     ctx.effect(() => ctx.webServer.register({
       kind: 'prefix',
       path: '/media-desk',

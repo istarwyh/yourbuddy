@@ -1,87 +1,39 @@
-# dsh-plugin-marketplace
+# DSH Plugin Marketplace
 
-[![中文文档](https://img.shields.io/badge/%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3-blue)](README.zh.md)
+简体中文 | [English](README.en.md)
 
-**GitHub**: [Scorp1o117/dsh-plugin-marketplace](https://github.com/Scorp1o117/dsh-plugin-marketplace) · **npm**: [dsh-plugin-marketplace](https://www.npmjs.com/package/dsh-plugin-marketplace)
+在 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 中浏览社区插件，并管理当前 Web 或 Desktop Profile 中安装的插件。
 
-[![Enhancement Suite](https://img.shields.io/badge/part%20of-Enhancement%20Suite-3964fe)](https://github.com/Scorp1o117/dsh-enhancement-suite) [![npm](https://img.shields.io/npm/v/dsh-enhancement-suite)](https://www.npmjs.com/package/dsh-enhancement-suite)
+## 功能
 
-Part of the [DeepSeek Harness Enhancement Suite](https://github.com/Scorp1o117/dsh-enhancement-suite) — Vision · Soul/Persona · Long-term Memory · Plugin Marketplace.
+- **发现插件**：浏览 GitHub 上的 `dsh-plugin` 项目，按关键词搜索、Star 数或更新时间排序，预览 README。
+- **AI 解释**：使用当前配置的模型解释插件；是否可用取决于模型连接。
+- **管理插件**：输入 npm 包名安装，查看当前 Profile 的直接依赖，更新到最新版或确认卸载。内置 bundle 标记为由 DSH 管理，不能在这里覆盖或卸载；间接依赖不会显示为独立插件。
+- **查看真实结果**：套件与市场的操作按 Profile 串行执行；失败时显示错误及可能已经完成的部分，再刷新实际安装状态。
 
-A **plugin marketplace** inside the DeepSeek Harness Web UI: browse
-[github.com/topics/dsh-plugin](https://github.com/topics/dsh-plugin) right
-from the settings page — no terminal needed.
+> GitHub 仓库名不一定等于 npm 包名。安装前请核对插件作者提供的包名和使用说明；插件市场不会替你保证第三方插件的安全性。
 
-- **Search** the topic by keyword, **sort** by stars or last update
-- **Plugin cards** with description, stars, language, and update date
-- **Detail panel**: GitHub README summary, install command, repo/npm links
-- **AI explain**: one click asks the configured default model what a plugin
-  roughly does, answered in the UI — no need to read the README yourself
-- Powered by the public GitHub search API (CORS-enabled, no key needed;
-  unauthenticated rate limit 60 req/h)
-- Zero client dependencies (React only), no build step — hand-written
-  ModuleLoader bundle
+## 兼容性与安装
 
-## Compatibility (v0.3.6)
+支持 DSH Web / Desktop。DSH 启动时允许 `0.2.0-rc.2` 起的所有宿主版本（含后续预发布版）。兼容声明见 [package.json](package.json)。要求 Node.js `>=20.18`。
 
-Tested with DSH `0.1.7-rc.1` and `0.1.7-rc.2` (`next`); npm `latest` is `0.1.5-rc.3`.
-The host now stores live plugin settings in the Profile patch and the browser
-uses `configForms`. This version was checked in a disposable Web profile.
-Older hosts require an older plugin release; alpha releases remain `unknown`.
+Desktop 先在 **应用 → 管理 dsh 命令** 安装桌面版 `dsh`：
 
-## Install
-
-As a profile bundle (recommended):
-
-```
-dsh plugin --profile web add dsh-plugin-marketplace
+```sh
+dsh plugin --profile desktop add dsh-plugin-marketplace
 ```
 
-or via the package's `dsh.bundle.patch` layer — add `dsh-plugin-marketplace`
-to `dsh.profile.bundles` in `$DSH_HOME/profiles/web/package.json`.
+Web 将 `desktop` 改为 `web`。安装后重启 DSH，打开 **插件 → 已安装 → dsh-plugin-marketplace**。也可通过 [Enhancement Suite](https://github.com/Scorp1o117/dsh-enhancement-suite) 安装。
 
-Manual mount in `$DSH_HOME/profiles/web/cordis.patch.yml`:
+## 使用
 
-```yaml
-- insert:
-    - id: plugin-marketplace
-      name: 'dsh-plugin-marketplace'
-```
+1. 浏览或搜索社区插件，阅读项目介绍和安装说明。
+2. 在管理表单输入准确的 npm 包名，例如 `package-name` 或 `@scope/package-name`。
+3. 安装、更新或确认卸载；检查返回的状态和错误。
+4. 操作完成后重启 DSH。更新或卸载市场自身也需要重启。
 
-> **Upgrading from ≤ 0.2.2?** If you previously mounted the plugin manually,
-> **remove that row from `cordis.patch.yml`** before switching to the bundle
-> install — the bundle layer already inserts the entry, and two entries with
-> the same id abort boot with `duplicate loader entry id: plugin-marketplace`.
-> The two ways are alternatives, not both.
+Desktop 操作使用当前桌面宿主提供的 CLI 和包管理器，并作用于 Desktop Profile；Web 作用于对应 Web Profile。卸载旧式插件时会清理其手动挂载和配置补丁，保留其他 YAML 配置及注释。界面语言跟随 DSH。
 
-Then restart `dsh web` (new client plugins require a process restart to be
-scanned into the browser roster) and open **Settings → Plugin Marketplace**.
+## 开发与反馈
 
-Version 0.3.6 uses DSH's `configForms` client service and Profile patch
-settings. Use an older plugin release with older DSH hosts.
-Note: when dsh web is opened from a non-loopback origin (a LAN IP, say), DSH
-keeps settings writes process-local, so install / AI-explain requests never
-reach the host.
-
-## How it works
-
-| Layer | File | Role |
-|---|---|---|
-| host shell | `index.js` | settings-backed install + AI-explain flows; `dsh.bundle.patch` makes the package a proper profile bundle |
-| browser half | `client.js` | registers the `settings.section` "marketplace" tab; fetches GitHub search API; renders cards + detail; "AI explain" button |
-| manifest | `package.json` | `dsh.bundle: { patch: "./cordis.patch.yml" }` + `dsh.client: { platform: "web" }` + `exports["./client"]` — discovered by `dsh-client-modules` |
-
-The browser half needs no `dsh.client.inject` packages: it only uses `react`
-(provided by the web runtime) and the `slots` / `locale` client services.
-
-## Notes
-
-- The GitHub search API returns at most 1000 results; the topic currently has
-  280+ repos, so paging covers everything.
-- READMEs are fetched per plugin on demand and truncated to ~1200 chars.
-- If you see "rate-limited", wait an hour or run the web through a proxy that
-  adds a GitHub token.
-
-## License
-
-MIT
+`npm test` 覆盖 Desktop 路径、安装更新、卸载清理、内置保护与失败处理。[npm](https://www.npmjs.com/package/dsh-plugin-marketplace) · [问题反馈](https://github.com/Scorp1o117/dsh-plugin-marketplace/issues) · [MIT License](LICENSE)。

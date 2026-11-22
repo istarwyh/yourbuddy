@@ -50,7 +50,6 @@ Install a Chrome or Chromium executable that supports the pinned Stagehand SDK. 
 |---|---|---|
 | `mode` | `launch` | Start a fresh browser or `attach` to an existing browser. |
 | `cdpEndpoint` | Required for `attach` | HTTP or WebSocket debugging endpoint selected by the profile. |
-| `extensionId` | Load bundled extension | Installed Stagehand extension to use in an existing browser. |
 | `executablePath` | Installed stable Chrome | Chrome or Chromium executable, for `launch` only. |
 | `headless` | `true` | Hide a launched browser's window. |
 | `operationTimeoutMs` | `30000` | Deadline for Chromium startup, navigation, and natural-language actions. |
@@ -90,9 +89,7 @@ env -u NODE_USE_ENV_PROXY DSH_STAGEHAND_E2E=1 pnpm exec vitest run --config vite
 
 The host owns each launched Chromium process and its temporary profile before waiting for CDP readiness. Chromium receives the standard scrubbed child environment, preserving paths, locale, and proxy settings while excluding credential-shaped variables and DSH identity. Both modes connect the SDK inside a dedicated Worker. The Worker receives no ambient environment except the explicit source TypeScript configuration path, so its CDP connection does not inherit host proxy settings. SDK close waits for active operations. Cleanup terminates the connection Worker after the configured SDK grace; launch also kills and awaits its owned Chromium process before removing the profile. Attached external browsers remain open. Cleanup failures follow the [ownership limits](#known-limitations-and-deferred-work) below.
 
-The [native runtime](src/native.ts) passes the explicit model configuration to Stagehand's public initialization API. Stagehand owns the model requests, response validation, and token accounting inside its browser extension. DSH records browser tool inputs and returned data, including SDK result metadata, through the existing Session log. Underlying inference request/response capture and integration into DSH Session usage accounting are deferred.
-
-No invariant companion is published: every browser operation uses the resource owner's single acquired handle, with no separately maintained browser relationship to compare.
+The [native runtime](src/native.ts) passes the explicit model configuration to Stagehand's public initialization API. The adapter pins Zod to the version required by Stagehand because extraction passes Zod schemas to the SDK. Stagehand owns the model requests, response validation, and token accounting inside its browser extension. DSH records browser tool inputs and returned data, including SDK result metadata, through the existing Session log. Underlying inference request/response capture and integration into DSH Session usage accounting are deferred.
 
 </details>
 

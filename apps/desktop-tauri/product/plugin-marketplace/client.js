@@ -16,7 +16,7 @@ window.__ModuleLoader__.load({
     Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
     var react = require("react");
     var h = react.createElement;
-    var PLUGIN_VERSION = "0.3.6";
+    var PLUGIN_VERSION = "0.5.10";
 
     // ── CSS (theme tokens) ────────────────────────────────────────────────
     var CSS = ".__mp_grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;padding:0;margin:0;list-style:none}" +
@@ -45,6 +45,35 @@ window.__ModuleLoader__.load({
       ".__mp_identityName{color:var(--dsw-alias-label-primary);font-weight:600}" +
       ".__mp_identityVersion{padding:1px 8px;border-radius:999px;background:var(--dsw-alias-accent-soft,var(--dsw-alias-border-l2));color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}" +
       ".__mp_error{color:var(--dsw-alias-label-error);font-size:12px;margin:8px 0 0}";
+    // Scoped flat controls retain native keyboard and form behavior.
+    CSS += `
+.dsh-flat.__mp_root{width:100%;max-width:720px;gap:14px;font-size:13px;line-height:1.65;color:var(--dsw-alias-label-primary);--flat-accent:var(--dsw-alias-state-business-primary,#3964fe);--flat-border:var(--dsw-alias-border-l2,#dce2eb)}
+.dsh-flat.__mp_root *{box-sizing:border-box;min-width:0}
+.dsh-flat.__mp_root p{margin:0}
+.dsh-flat.__mp_root label[class$="_field"]{gap:7px}
+.dsh-flat.__mp_root [class$="_label"]{font-size:13px;font-weight:500}
+.dsh-flat.__mp_root [class$="_hint"]{font-size:12px;line-height:1.65}
+.dsh-flat.__mp_root input:not([type=checkbox]),.dsh-flat.__mp_root select,.dsh-flat.__mp_root textarea{width:100%;border:1px solid var(--flat-border);border-radius:6px;background:var(--dsw-alias-bg-layer-3);color:inherit;font:inherit;padding:9px 12px;min-height:40px;box-shadow:none;transition:border-color .15s}
+.dsh-flat.__mp_root input:hover:not(:disabled),.dsh-flat.__mp_root select:hover:not(:disabled),.dsh-flat.__mp_root textarea:hover:not(:disabled){border-color:var(--dsw-alias-label-tertiary)}
+.dsh-flat.__mp_root select{appearance:none;padding-right:34px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='m2 2 4 4 4-4' fill='none' stroke='%23778091' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.dsh-flat.__mp_root :is(input,select,textarea,button,summary,a):focus-visible{outline:2px solid var(--flat-accent);outline-offset:3px}
+.dsh-flat.__mp_root :is(input,select,textarea,button):disabled{opacity:.5;cursor:default}
+.dsh-flat.__mp_root [class$="_actions"]{flex-wrap:wrap;gap:10px;margin-top:4px;padding-top:16px;border-top:1px solid var(--flat-border)}
+.dsh-flat.__mp_root .__mp_grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:16px}
+.dsh-flat.__mp_root .__mp_card{width:100%;max-width:100%;padding:18px;gap:10px;border-radius:6px;background:var(--dsw-alias-bg-layer-3);min-height:146px;transition:border-color .15s}
+.dsh-flat.__mp_root .__mp_card:hover{border-color:var(--flat-accent)}
+.dsh-flat.__mp_root .__mp_name{font-size:14px}
+.dsh-flat.__mp_root .__mp_meta{flex-wrap:wrap}
+.dsh-flat.__mp_root .__mp_toolbar{gap:10px;margin-bottom:18px}
+.dsh-flat.__mp_root .__mp_input{min-width:160px;width:auto}
+.dsh-flat.__mp_root .__mp_select{width:auto}
+.dsh-flat.__mp_root .__mp_detail{border:0;border-left:2px solid var(--flat-border);border-radius:0;background:none;margin:0;padding:4px 0 4px 16px;gap:12px}
+@media(max-width:480px){.dsh-flat.__mp_root{gap:16px}.dsh-flat.__mp_root .__mp_toolbar{align-items:stretch}.dsh-flat.__mp_root .__mp_input{flex-basis:100%}}
+@media(prefers-reduced-motion:reduce){.dsh-flat.__mp_root *,.dsh-flat.__mp_root input[type=checkbox]::before{transition:none}}
+.dsh-flat.__mp_root button:not(.__mp_card){border-radius:6px;min-height:34px;padding:7px 14px;font:inherit;font-size:12px;box-shadow:none}
+.dsh-flat.__mp_root :is(h2,h3){margin:0;font-size:14px;font-weight:600}
+.dsh-flat.__mp_root{display:flex;flex-direction:column}
+`;
     var tagId = "dsh-plugin-marketplace/main.css";
     if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
       var tag = document.createElement("style");
@@ -58,7 +87,12 @@ window.__ModuleLoader__.load({
     var NS = "marketplace";
     var inject = ["slots", "locale", "configForms", "connection"];
     var zh = {
+      manage: "插件管理", installed: "已安装插件", packageName: "npm 包名（支持 @scope/name）", refresh: "刷新列表",
+      updatePlugin: "更新到最新版", removePlugin: "卸载", confirmRemove: "确认卸载", builtin: "内置（随 DSH 更新）",
+      restartHint: "安装、更新或卸载后，请重启 DSH。操作针对当前 Profile。", operationOk: "操作完成", operationError: "操作失败", operationBusy: "正在处理…",
       nav: "插件市场",
+      searchBtn: "搜索",
+      sortLabel: "排序方式",
       search: "搜索插件（关键词或留空浏览全部）…",
       sortStars: "按 Star 排序",
       sortUpdated: "按更新时间排序",
@@ -82,6 +116,7 @@ window.__ModuleLoader__.load({
       installOk: "已安装：{msg}",
       installErr: "安装失败：{msg}",
       installIdle: "",
+      hostTimeout: "宿主在 15 秒内没有确认请求，请检查插件是否启用并重启 DSH 后重试。",
       installingHint: "正在后台执行 dsh plugin add，请稍候…",
       npmChecking: "正在核验 npm 包…",
       npmResolved: "可安装 npm 包：{pkg}@{version}",
@@ -95,7 +130,12 @@ window.__ModuleLoader__.load({
       notExposed: "无法写入插件市场的设置通道：DSH 版本过旧（需 0.1.0-rc.7+）、宿主半端未挂载，或当前页面不是本机回环访问；请通过 127.0.0.1 打开 dsh web 后重试。"
     };
     var en = {
+      manage: "Plugin management", installed: "Installed plugins", packageName: "npm package name (supports @scope/name)", refresh: "Refresh list",
+      updatePlugin: "Update to latest", removePlugin: "Uninstall", confirmRemove: "Confirm uninstall", builtin: "Built-in (updated with DSH)",
+      restartHint: "Restart DSH after installing, updating or uninstalling. Operations target the current profile.", operationOk: "Operation completed", operationError: "Operation failed", operationBusy: "Working…",
       nav: "Plugin Marketplace",
+      searchBtn: "Search",
+      sortLabel: "Sort plugins",
       search: "Search plugins (keyword, or empty to browse all)…",
       sortStars: "Sort by stars",
       sortUpdated: "Sort by updated",
@@ -119,6 +159,7 @@ window.__ModuleLoader__.load({
       installOk: "Installed: {msg}",
       installErr: "Install failed: {msg}",
       installIdle: "",
+      hostTimeout: "The Host did not acknowledge the request within 15 seconds. Check that the plugin is enabled and restart DSH before retrying.",
       installingHint: "Running dsh plugin add in the background…",
       npmChecking: "Checking the npm package…",
       npmResolved: "Installable npm package: {pkg}@{version}",
@@ -420,7 +461,7 @@ window.__ModuleLoader__.load({
             onClick: function () { props.onExplain(p.fullName, p.desc, props.readme || ""); }
           }, props.t("aiExplain")),
           h("div", { id: "__mp_translateOut", style: { fontSize: "12px", lineHeight: "1.6", color: "var(--dsw-alias-label-secondary, #8b949e)", whiteSpace: "pre-wrap", wordBreak: "break-word", marginTop: "8px", borderTop: "1px solid var(--dsw-alias-border, #21262d)", paddingTop: "8px" } },
-            explainMine && props.explainError ? h("span", { style: { color: "var(--dsw-alias-state-danger-text, #f85149)" } }, props.explainError)
+            props.explainError ? h("span", { role: "alert", style: { color: "var(--dsw-alias-state-danger-text, #f85149)" } }, props.explainError)
               : explainMine && explainState.status === "running" ? props.t("aiExplaining")
               : explainMine && explainState.status === "error" ? props.t("aiExplainErr").replace("{msg}", explainState.text || "unknown")
               : explainMine && explainState.status === "ok" ? explainState.text
@@ -430,7 +471,35 @@ window.__ModuleLoader__.load({
       );
     }
 
+    function PluginManager(props) {
+      var t = props.t, channel = props.channel || {};
+      var [pkg, setPkg] = react.useState("");
+      var [confirm, setConfirm] = react.useState("");
+      var inventory = channel.inventory || {};
+      var busy = Boolean(channel.install && channel.install.ts) || channel.installState && channel.installState.status === "running";
+      var disabled = busy || !props.writable;
+      return h("section", { className: "__mp_manager", "aria-label": t("manage") },
+        h("h3", null, t("manage") + (inventory.profile ? " · " + inventory.profile : "")),
+        h("p", { className: "__mp_status" }, t("restartHint")),
+        h("form", { className: "__mp_toolbar", onSubmit: function (event) { event.preventDefault(); if (pkg.trim() && !disabled) props.onAction(pkg.trim(), "install"); } },
+          h("input", { className: "__mp_input", value: pkg, disabled: disabled, "aria-label": t("packageName"), placeholder: t("packageName"), onChange: function (event) { setPkg(event.target.value); } }),
+          h("button", { type: "submit", disabled: disabled || !pkg.trim() }, t("installBtn")),
+          h("button", { type: "button", disabled: disabled, onClick: function () { props.onAction("~refresh", "refresh"); } }, t("refresh"))),
+        h("h3", null, t("installed")),
+        h("ul", { style: { listStyle: "none", padding: 0 } }, (inventory.packages || []).map(function (row) {
+          return h("li", { key: row.name, style: { padding: "12px 0", borderBottom: "1px solid var(--dsw-alias-border-l2)", overflowWrap: "anywhere" } },
+            h("strong", null, row.name), " ", row.version || "—", " ",
+            row.managed ? h("span", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 } },
+              h("button", { type: "button", disabled: disabled, onClick: function () { props.onAction(row.name, "update"); } }, t("updatePlugin")),
+              h("button", { type: "button", disabled: disabled, onClick: function () { if (confirm !== row.name) setConfirm(row.name); else { setConfirm(""); props.onAction(row.name, "remove"); } } }, t(confirm === row.name ? "confirmRemove" : "removePlugin")))
+              : h("span", null, t("builtin")));
+        })),
+        channel.installState && channel.installState.status !== "idle" ? h("p", { role: channel.installState.status === "error" ? "alert" : "status", className: "__mp_status" },
+          t(channel.installState.status === "running" ? "operationBusy" : channel.installState.status === "error" ? "operationError" : "operationOk") + ": " + (channel.installState.pkg || "") + (channel.installState.status === "error" ? " · " + channel.installState.message : "")) : null);
+    }
+
     function MarketplaceSection(props) {
+      useLocale(props.locale);
       var t = props.t;
       var scope = props.scope;
       var api = props.api;
@@ -444,29 +513,65 @@ window.__ModuleLoader__.load({
         var sync = function () { if (alive) setInstallState(scope.getSnapshot()); };
         sync();
         var un = typeof scope.subscribe === "function" ? scope.subscribe(sync) : null;
-        return function () { alive = false; if (un) un(); if (scope.dispose) scope.dispose(); };
+        // configForms.get() returns a provider-owned, namespace-cached form.
+        // Page navigation owns only this subscription, never the shared form.
+        return function () { alive = false; if (un) un(); };
       }, [scope]);
+      var channel = installState && installState.status === "ready" ? installState.value : {};
+      // Start feedback before mutate settles, including a stalled write. Once
+      // settled, the shared channel tracks the Host's acknowledgement instead.
+      var installRequest = s.installPending && s.installPending.writing ? s.installPending : channel.install || {};
+      var explainRequest = s.explainPending && s.explainPending.writing ? s.explainPending : channel.aiExplain || {};
+      var explainErrors = s.explainErrors || {};
+      react.useEffect(function () {
+        if (!installRequest.pkg || !installRequest.ts || s.installError) return;
+        var timer = setTimeout(function () {
+          set(function (prev) { return Object.assign({}, prev, { installError: { key: "hostTimeout" } }); });
+        }, 15000);
+        return function () { clearTimeout(timer); };
+      }, [installRequest.pkg, installRequest.ts, s.installError]);
+      react.useEffect(function () {
+        if (!explainRequest.repo || !explainRequest.ts || explainErrors[explainRequest.repo]) return;
+        var repo = explainRequest.repo;
+        var timer = setTimeout(function () {
+          set(function (prev) { return Object.assign({}, prev, { explainErrors: Object.assign({}, prev.explainErrors, { [repo]: { key: "hostTimeout" } }) }); });
+        }, 15000);
+        return function () { clearTimeout(timer); };
+      }, [explainRequest.repo, explainRequest.ts, explainErrors[explainRequest.repo]]);
+      // Pending requests immediately show progress, before the Host acknowledges.
+      var visibleInstall = installRequest.pkg ? {
+        status: s.installError ? "error" : "running", pkg: installRequest.pkg, message: messageText(t, s.installError)
+      } : channel.installState;
+      var visibleExplain = explainRequest.repo ? {
+        status: explainErrors[explainRequest.repo] ? "error" : "running", repo: explainRequest.repo, text: messageText(t, explainErrors[explainRequest.repo])
+      } : channel.aiExplainResult;
       // Older hosts can still return settings-not-exposed. Recommend upgrading
       // instead of mutating the installed DSH package on disk.
       var mutateError = function (detail, fallback) {
-        if (detail && detail.code === "settings-not-exposed") return t("notExposed");
-        return String(detail && (detail.message || detail.code) || fallback);
+        if (detail && detail.code === "settings-not-exposed") return { key: "notExposed" };
+        return { key: "", detail: String(detail && (detail.message || detail.code) || fallback) };
       };
-      var onInstall = react.useCallback(function (pkg) {
-        set(function (prev) { return Object.assign({}, prev, { installError: null }); });
-        writeField(scope, api, "install", { pkg: pkg, ts: Date.now() }).then(function (result) {
-          if (!result.ok) {
-            set(function (prev) { return Object.assign({}, prev, { installError: mutateError(result.error, "unknown") }); });
-          }
+      var onInstall = react.useCallback(function (pkg, action) {
+        var request = { pkg: pkg, action: action || "install", ts: Date.now() };
+        var pending = Object.assign({ writing: true }, request);
+        set(function (prev) { return Object.assign({}, prev, { installError: null, installPending: pending }); });
+        writeField(scope, api, "install", request).then(function (result) {
+          set(function (prev) {
+            if (prev.installPending !== pending) return prev;
+            return Object.assign({}, prev, { installPending: null, installError: result.ok ? null : mutateError(result.error, "unknown") });
+          });
         });
       }, [scope, api, t]);
       // AI-explain request: the host answers over the same settings channel.
       var onExplain = react.useCallback(function (repo, desc, readme) {
-        set(function (prev) { return Object.assign({}, prev, { explainError: null }); });
-        writeField(scope, api, "aiExplain", { repo: repo, desc: desc, readme: readme, ts: Date.now() }).then(function (result) {
-          if (!result.ok) {
-            set(function (prev) { return Object.assign({}, prev, { explainError: mutateError(result.error, "unknown") }); });
-          }
+        var request = { repo: repo, desc: desc, readme: readme, ts: Date.now() };
+        var pending = Object.assign({ writing: true }, request);
+        set(function (prev) { return Object.assign({}, prev, { explainPending: pending, explainErrors: Object.assign({}, prev.explainErrors, { [repo]: null }) }); });
+        writeField(scope, api, "aiExplain", request).then(function (result) {
+          set(function (prev) {
+            if (prev.explainPending !== pending) return prev;
+            return Object.assign({}, prev, { explainPending: null, explainErrors: Object.assign({}, prev.explainErrors, { [repo]: result.ok ? null : mutateError(result.error, "unknown") }) });
+          });
         });
       }, [scope, api, t]);
       var load = react.useCallback(function (q, sort, page, append) {
@@ -477,7 +582,7 @@ window.__ModuleLoader__.load({
             return Object.assign({}, prev, { items: items, total: out.total, loading: false, page: page, q: q, sort: sort });
           });
         }).catch(function () {
-          set(function (prev) { return Object.assign({}, prev, { loading: false, error: t("ghError") }); });
+          set(function (prev) { return Object.assign({}, prev, { loading: false, error: { key: "ghError" } }); });
         });
       }, [t]);
       react.useEffect(function () {
@@ -518,14 +623,13 @@ window.__ModuleLoader__.load({
         load(s.q, s.sort, 1, false);
       };
       var more = function () { load(s.q, s.sort, s.page + 1, true); };
-      return h("div", null,
-        h("div", { className: "__mp_identity" },
-          h("span", { className: "__mp_identityName" }, "dsh-plugin-marketplace"),
-          h("span", { className: "__mp_identityVersion" }, "v" + PLUGIN_VERSION)
-        ),
+      return h("div", { className: "__mp_root dsh-flat" },
+        h("div", { className: "__mp_identity" }, h("span", { className: "__mp_identityName" }, "dsh-plugin-marketplace"), h("span", { className: "__mp_identityVersion" }, "v" + PLUGIN_VERSION)),
+        h(PluginManager, { channel: channel, t: t, onAction: onInstall, writable: installState && installState.writable }),
         h("form", { className: "__mp_toolbar", onSubmit: submit },
-          h("input", { className: "__mp_input", type: "search", value: s.q, placeholder: t("search"), onChange: function (e) { set(function (prev) { return Object.assign({}, prev, { q: e.target.value }); }); } }),
-          h("select", { className: "__mp_select", value: s.sort, onChange: function (e) { load(s.q, e.target.value, 1, false); } },
+          h("input", { className: "__mp_input", type: "search", value: s.q, "aria-label": t("search"), placeholder: t("search"), onChange: function (e) { set(function (prev) { return Object.assign({}, prev, { q: e.target.value }); }); } }),
+          h("button", { type: "submit", className: "__mp_btnPrimary", disabled: s.loading }, t("searchBtn")),
+          h("select", { className: "__mp_select", "aria-label": t("sortLabel"), value: s.sort, onChange: function (e) { load(s.q, e.target.value, 1, false); } },
             h("option", { value: "stars" }, t("sortStars")),
             h("option", { value: "updated" }, t("sortUpdated"))
           )
@@ -538,19 +642,34 @@ window.__ModuleLoader__.load({
             var open = s.open && s.open.fullName === p.fullName;
             return h("div", { key: p.fullName, className: "__mp_item" },
               h(PluginCard, { plugin: p, t: t, onOpen: function () { openDetail(p); } }),
-              open ? h(DetailPanel, { plugin: s.open, t: t, readme: s.readme, readmeLoading: s.readmeLoading, readmeError: s.readmeError, readmeRateLimited: s.readmeRateLimited, lang: s.open.lang, installState: installState && installState.status === "ready" ? installState.value.installState : null, onInstall: onInstall, ghError: t("ghError"), explainState: installState && installState.status === "ready" ? installState.value.aiExplainResult : null, explainError: s.explainError, onExplain: onExplain, npmInfo: s.npmInfo }) : null
+              open ? h(DetailPanel, { plugin: s.open, t: t, readme: s.readme, readmeLoading: s.readmeLoading, readmeError: s.readmeError, readmeRateLimited: s.readmeRateLimited, lang: s.open.lang, installState: visibleInstall, onInstall: onInstall, ghError: t("ghError"), explainState: visibleExplain, explainError: messageText(t, explainErrors[p.fullName]), onExplain: onExplain, npmInfo: s.npmInfo }) : null
             );
           })
         ),
         s.loading ? h("p", { className: "__mp_status" }, t("loading")) : null,
-        s.error ? h("p", { className: "__mp_error" }, s.error) : null,
+        s.error ? h("p", { className: "__mp_error" }, messageText(t, s.error)) : null,
         s.items.length === 0 && !s.loading && !s.error ? h("p", { className: "__mp_status" }, t("empty")) : null,
         s.items.length > 0 ? h("button", { type: "button", className: "__mp_more", onClick: more, disabled: s.loading }, t("loadMore")) : null,
-        s.installError ? h("p", { className: "__mp_error" }, s.installError) : null
+        s.installError ? h("p", { className: "__mp_error" }, messageText(t, s.installError)) : null
       );
     }
 
     // ── plugin ────────────────────────────────────────────────────────────
+
+    // Follow the host language without remounting the form or losing drafts.
+    function useLocale(locale) {
+      var refresh = react.useState(0)[1];
+      react.useEffect(function () {
+        if (!locale || typeof locale.subscribe !== "function") return;
+        return locale.subscribe(function () { refresh(function (revision) { return revision + 1; }); });
+      }, [locale]);
+    }
+    // Keep translation keys in state so feedback follows later language changes.
+    function messageText(t, message) {
+      if (!message) return "";
+      return (message.key ? t(message.key) : "") + (message.detailKey ? ": " + t(message.detailKey) : message.detail ? (message.key ? ": " : "") + message.detail : "");
+    }
+
     function apply(ctx) {
       var t = ctx.locale.bind(NS);
       ctx.effect(function () { return ctx.locale.register(NS, { zh: zh, en: en }); }, "dsh-plugin-marketplace: dictionaries");
@@ -558,15 +677,13 @@ window.__ModuleLoader__.load({
       // dsh 0.1.2-rc.1 dropped connection.api; only older hosts still carry
       // the raw settings face there. writeField picks whichever exists.
       var api = (ctx.connection && ctx.connection.api) ? ctx.connection.api : null;
-      ctx.slots.inject("settings.section", function () {
+      ctx.slots.inject("plugins.bundle.config", function () {
         return ctx.slots.register({
-          name: "settings.section",
-          id: "marketplace",
-          order: 20,
-          label: function () { return t("nav"); },
+          name: "plugins.bundle.config",
+          key: "dsh-plugin-marketplace",
           locale: NS
         }, function (props) {
-          return h(MarketplaceSection, Object.assign({}, props, { scope: scope, api: api }));
+          return h(MarketplaceSection, Object.assign({}, props, { scope: scope, api: api, t: t, locale: ctx.locale }));
         });
       });
     }

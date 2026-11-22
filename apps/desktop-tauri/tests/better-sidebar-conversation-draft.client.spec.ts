@@ -8,7 +8,8 @@ import { ConversationController } from '@deepseek-ai/dsh-client-ui-conversation/
 import { ComposerBlockRegistry } from '../../../packages/client/ui-conversation/src/client/input/blocks.ts'
 import { InputHub } from '../../../packages/client/ui-conversation/src/client/input/hub.ts'
 import { zh } from '../../../packages/client/ui-conversation/src/client/locales.ts'
-import { insertFileReference } from '../product/dsh-better-sidebar/src/client/conversation-draft.ts'
+import type { Context as SidebarContext } from '../product/dsh-better-sidebar/src/context-types.ts'
+import { insertDraftReference } from '../product/dsh-better-sidebar/src/client/conversation-draft.ts'
 
 async function bench() {
   const runtime = await SlotTestRuntime.create()
@@ -39,7 +40,9 @@ async function bench() {
   const input = hub.for(owner)
   input.setDraft('inspect ')
   otherInput.setDraft('other draft')
-  return { runtime, ownerId, owner, other, input, otherInput }
+  // This fixture exercises only composer events; unrelated sidebar services are never read.
+  const ctx = runtime.ctx as SidebarContext
+  return { ctx, ownerId, owner, other, input, otherInput }
 }
 
 describe('Better Sidebar composer file references', () => {
@@ -54,7 +57,7 @@ describe('Better Sidebar composer file references', () => {
     b.owner.on('slash/input-insert-reference', later)
     b.other.on('slash/input-insert-reference', otherListener)
 
-    expect(insertFileReference(b.runtime.ctx, b.ownerId, 'notes/my file.ts')).toBe(true)
+    expect(insertDraftReference(b.ctx, b.ownerId, { label: 'my file.ts', text: '@"notes/my file.ts"', clipboardText: '@"notes/my file.ts"', appearance: 'file' })).toBe(true)
 
     expect(insert).toHaveBeenCalledExactlyOnceWith({
       source: 'reference',
@@ -81,7 +84,7 @@ describe('Better Sidebar composer file references', () => {
     const otherBefore = b.otherInput.state.getSnapshot()
     const insert = vi.spyOn(b.input, 'insertReference').mockReturnValue(false)
 
-    expect(insertFileReference(b.runtime.ctx, b.ownerId, 'readme.md')).toBe(false)
+    expect(insertDraftReference(b.ctx, b.ownerId, { label: 'readme.md', text: '@readme.md', appearance: 'file' })).toBe(false)
 
     expect(insert).toHaveBeenCalledOnce()
     expect(b.input.state.getSnapshot()).toBe(before)

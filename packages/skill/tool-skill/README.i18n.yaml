@@ -9,14 +9,14 @@
   en: 223816f8da89cf76
   zh: 7c54534f299141eb
 /deepseek-ai-dsh-tool-skill/summary:
-  en: e4d0c71b69f1907b
-  zh: 782e575a58dc7ad8
+  en: 68da1f451e832588
+  zh: 073bdf7f0b684c44
 /deepseek-ai-dsh-tool-skill/table-of-contents:
   en: d152484eb41ac6b4
   zh: 09388d293f9be9cb
 /deepseek-ai-dsh-tool-skill/use-this-package:
-  en: 5c21d1ba71c1c3e1
-  zh: 3e2505d4625b57b4
+  en: 633cb494ab14a7ce
+  zh: 8647ccca09bf3e0a
 /deepseek-ai-dsh-tool-skill/use-this-package/when-to-choose-it:
   en: b7d33bd969826ee3
   zh: 4e155a0f14b41541
@@ -24,23 +24,23 @@
   en: 56e201744a4450f9
   zh: a5755cced8b033c7
 /deepseek-ai-dsh-tool-skill/use-this-package/what-the-model-gets:
-  en: 9d09b38492ba2083
-  zh: 3587896a4d4378f9
+  en: 537c7e38d90e53cc
+  zh: 234bbf5d86f5f6ce
 /deepseek-ai-dsh-tool-skill/use-this-package/observable-success-and-failures:
-  en: 1f851885bfc2b06a
-  zh: 97668d039f13d137
+  en: ee639341880a391a
+  zh: adf34532f055b675
 /deepseek-ai-dsh-tool-skill/understand-the-implementation:
   en: 1aa627255c35178f
   zh: 44d8633ea56765d3
 /deepseek-ai-dsh-tool-skill/understand-the-implementation/design-concept:
-  en: ee4380c98437d699
-  zh: 25f35ec8c8c47c00
+  en: c1faafc87c5bea50
+  zh: a0dc8d1f7365a139
 /deepseek-ai-dsh-tool-skill/understand-the-implementation/source-map:
-  en: 9a8fa8b8305ef86a
-  zh: f80fbdfb2a8f1818
+  en: 509699e3a467df41
+  zh: ff7fc30ec4998e5a
 /deepseek-ai-dsh-tool-skill/understand-the-implementation/catalog-lifecycle:
-  en: 1cc12e95e2e52e19
-  zh: 1e6ecde7df109317
+  en: 4d9821f3e78c3c15
+  zh: 2b0bc1a63eeed1cd
 /deepseek-ai-dsh-tool-skill/understand-the-implementation/invocation-boundary:
   en: 963562781065faf2
   zh: 1b71de8a45d47f57
@@ -54,14 +54,23 @@
   en: ed929c61dd301a56
   zh: 376c8d69b6fa7df6
 /deepseek-ai-dsh-tool-skill/model-experience/session-catalog/what-the-model-sees:
-  en: 9ad58d88958630db
-  zh: 6ad1c30342e77fa4
+  en: 9bb1b510dc06df35
+  zh: 86992d045c4b62b3
+/deepseek-ai-dsh-tool-skill/model-experience/session-catalog/what-the-model-sees/incomplete-discovery-notice:
+  en: 30bbdd5d61a9e8c3
+  zh: 28f02400b5643331
+/deepseek-ai-dsh-tool-skill/model-experience/session-catalog/what-the-model-sees/initial-empty-incomplete-catalog:
+  en: bfed78cd16e0af12
+  zh: 7291a6e0bf95311f
+/deepseek-ai-dsh-tool-skill/model-experience/session-catalog/what-the-model-sees/empty-incomplete-replacement:
+  en: d71eb7aa26919abb
+  zh: 8f3e4db43aae3c6f
 /deepseek-ai-dsh-tool-skill/model-experience/session-catalog/what-the-model-sees/skill-catalog-template:
   en: 8ca9241e26124ce3
   zh: d083f87eaae40e15
 /deepseek-ai-dsh-tool-skill/model-experience/session-catalog/token-effect:
-  en: c05d3d46e5139c4d
-  zh: 8acfa475cddaeb18
+  en: 223a393b4d0d67d9
+  zh: d3dc5d22337abecb
 /deepseek-ai-dsh-tool-skill/model-experience/session-catalog/kv-cache-effect:
   en: e6e6758c96527e19
   zh: 8f95e36da658c95a

@@ -34,10 +34,10 @@ type PortableSummaryResult = {
 });
 declare const DSH_RUNTIME_PACKAGES: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-compaction-basic", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-token-meter"];
 type DshRuntimePackage = typeof DSH_RUNTIME_PACKAGES[number];
-/** Exact runtime pair verified against both npm and the matching source artifacts. */
+/** Verified coherent DSH graphs sharing the observed pi-ai conversion contract. */
 export declare const CODEX_COMPACTION_COMPATIBILITY: Readonly<{
-    dsh: "0.2.0-rc.2";
-    piAi: "0.87.1";
+    dsh: "0.2.1-rc.1 || 0.2.1-rc.2";
+    piAi: "1.1.0";
 }>;
 /** Runtime facts accepted by the compatibility assertion. */
 export interface CodexCompactionRuntimeVersions {

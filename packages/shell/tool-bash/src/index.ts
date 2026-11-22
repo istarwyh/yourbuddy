@@ -11,27 +11,30 @@
  * @module @deepseek-ai/dsh-tool-bash
  */
 
+import type {} from '@deepseek-ai/dsh-working-directory'
 import { FiberState } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { isAbsolute, sep } from 'node:path'
-import { defineTool, TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
+import { defineTool, TOOL_ABORTED, ToolArgsError, ToolContextUnavailableError } from '@deepseek-ai/dsh-tools'
 import type { GenericCallView, TerminalCallView, ToolDefinition, ToolExecution, ToolResult, ToolResultView } from '@deepseek-ai/dsh-tools'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import { JobError } from '@deepseek-ai/dsh-jobs'
 import type { JobId, JobRegistry, JobView } from '@deepseek-ai/dsh-jobs'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import type {} from '@deepseek-ai/dsh-shell-env'
 import type { SandboxExecutionPolicy, SandboxMode } from '@deepseek-ai/dsh-sandbox'
-import { ESCALATION_TARGETS, approveEscalation, sandboxPermissionsDescription, validateEscalationArgs } from '@deepseek-ai/dsh-sandbox'
+import { ESCALATION_TARGETS, SandboxEscalationError, approveEscalation, sandboxPermissionsDescription, validateEscalationArgs } from '@deepseek-ai/dsh-sandbox'
+import { subprocessSpawnFailure } from '@deepseek-ai/dsh-subprocess'
 import type { SandboxPolicyService } from '@deepseek-ai/dsh-sandbox-policy'
 import { DSH_ENV_PREFIX } from '@deepseek-ai/dsh-shell'
 import type { ShellExecRequest, ShellExecSpec, ShellExecution, ShellRunResult } from '@deepseek-ai/dsh-shell'
 import { processJob, processOutcome, processSources, ringDelta } from './background.ts'
+import type { ProcessJobHooks } from './background.ts'
 import { parseExitStatus, renderJobRead, renderPromoted, renderResult } from './render.ts'
 
 export const name = 'tool-bash'
-export const inject = ['tools', 'shell', 'systemPrompt', 'shellEnv']
+export const inject = ['tools', 'shell', 'systemPrompt', 'shellEnv', 'workingDirectory']
 
 /** Configuration for the bash tool. */
 export interface Config {
@@ -72,13 +75,13 @@ interface BashToolArgs {
 
 function validateBashArgs(args: BashToolArgs, effectiveMode: SandboxMode | undefined): void {
   if (args.command.trim().length === 0) {
-    throw new Error('invalid command: expected a non-empty string')
+    throw new ToolArgsError(['invalid command: expected a non-empty string'])
   }
   if (args.description.trim().length === 0) {
-    throw new Error('invalid description: expected a non-empty string')
+    throw new ToolArgsError(['invalid description: expected a non-empty string'])
   }
   if (args.timeoutMs !== undefined && (!Number.isFinite(args.timeoutMs) || args.timeoutMs <= 0)) {
-    throw new Error(`invalid timeoutMs: expected a positive number, got ${JSON.stringify(args.timeoutMs)}`)
+    throw new ToolArgsError([`invalid timeoutMs: expected a positive number, got ${JSON.stringify(args.timeoutMs)}`])
   }
   if (args.sandbox_permissions !== undefined && args.sandbox_permissions === effectiveMode) return
   const justification = args.sandbox_permissions === undefined && args.justification?.trim() === ''
@@ -92,6 +95,7 @@ function bashDescription(): string {
     + 'Each call runs in a fresh shell; pass `workdir` instead of using `cd`. '
     + `Managed \`$${DSH_ENV_PREFIX}*\` variables expose current harness environment facts. `
     + 'Long output is truncated to its tail; the full output is saved to a file whose path is reported when available. '
+    + 'Provide `description` before `command` in the arguments. '
     + 'Before any delete or move, verify that the resolved absolute target path is the intended one; never run it against a computed path you have not checked. '
     + 'An unset variable expands to an empty string, so guard variables in such paths with `${VAR:?}`. '
     + 'Commands may run under a file sandbox; a blocked file operation is reported as `[sandbox: file access denied under <mode> mode]`, a policy denial: do not retry another way.'
@@ -141,19 +145,8 @@ function presentBashResult(args: unknown, result: ToolResult): ToolResultView | 
   return { card: 'terminal', output: body, ...exit }
 }
 
-/**
- * Resolve an explicit workdir first, making a relative one session-workspace-relative;
- * otherwise use the filesystem identity of the session cwd and leave executor
- * defaulting as the fallback. A resolved sandbox-policy root wins so workdir
- * and confinement use the exact same per-call identity.
- */
-function resolveWorkdir(
-  modelWorkdir: string | undefined,
-  exec: { agent?: Agent },
-  policyWorkspaceRoot?: string,
-): string | undefined {
-  const headerCwd = exec.agent?.session.header.cwd
-  const sessionCwd = policyWorkspaceRoot ?? headerCwd
+/** Resolve a relative per-call override against the Session's current directory. */
+function resolveWorkdir(modelWorkdir: string | undefined, sessionCwd: string | undefined): string | undefined {
   if (modelWorkdir === undefined) return sessionCwd
   if (sessionCwd !== undefined && !isAbsolute(modelWorkdir)) {
     return `${sessionCwd}${sep}${modelWorkdir}`
@@ -162,13 +155,14 @@ function resolveWorkdir(
 }
 
 /** Detach the executor DTO from readonly Service Definition types into plain JSON data. */
-function canonicalBashResult(result: ShellRunResult) {
+function canonicalBashResult(result: ShellRunResult, cwd: string) {
   const output = (stream: ShellRunResult['stdout']) => ({
     text: stream.text,
     truncated: stream.truncated,
     ...stream.spillPath !== undefined ? { spillPath: stream.spillPath } : {},
   })
   return {
+    cwd,
     exitCode: result.exitCode,
     signal: result.signal,
     timedOut: result.timedOut,
@@ -194,17 +188,31 @@ function toolAborted(): HarnessError {
   return error
 }
 
+/**
+ * Report a launch or preparation rejection as this tool's failure. This
+ * call's cancellation reason stays as thrown so the registry records it as
+ * aborted; a platform spawn error is classified as a subprocess spawn failure
+ * with the original as `cause`; any other value, including a coded error,
+ * keeps its own identity.
+ */
+function launchFailure(error: unknown, signal: AbortSignal): unknown {
+  return signal.aborted && error === signal.reason ? error : subprocessSpawnFailure(error, 'bash')
+}
+
 /** A registered command: its id, the process once the starter spawned it, and the reason an outside kill gave. */
 interface StartedJob {
   readonly id: JobId
   readonly process: () => ShellExecution | undefined
   readonly stopped: () => string | undefined
+  /** The original error of a registration whose preparation failed before the process published. */
+  readonly failure: () => { error: unknown } | undefined
 }
 
 /** Canonical background-handle properties shared by the bash output union. */
 const BACKGROUND_OUTPUT_PROPERTIES = {
   kind: { type: 'string', required: true, const: 'background' },
   jobId: { type: 'string', required: true },
+  cwd: { type: 'string', required: true },
 } as const
 
 export function apply(ctx: Context, config: Config = {}): void {
@@ -240,7 +248,10 @@ export function apply(ctx: Context, config: Config = {}): void {
     standingPolicy: SandboxExecutionPolicy | undefined,
   ): Promise<SandboxMode> => {
     if (escalationModes.length === 0) {
-      throw new Error('sandbox_permissions is not available in this composition (no sandboxing executor to escalate)')
+      throw new SandboxEscalationError(
+        'sandbox_permissions is not available in this composition (no sandboxing executor to escalate)',
+        'SANDBOX_ESCALATION_UNAVAILABLE',
+      )
     }
     const effectiveMode = (standingPolicy as SandboxExecutionPolicy).mode
     return approveEscalation(
@@ -274,31 +285,34 @@ export function apply(ctx: Context, config: Config = {}): void {
     const startJob = (registry: JobRegistry, args: BashToolArgs, exec: ToolExecution, spec: ShellExecSpec): StartedJob => {
       let proc: ShellExecution | undefined
       let stopped: string | undefined
+      let hooks: ProcessJobHooks | undefined
       const id = registry.start({
         kind: 'bash',
         label: args.command,
+        toolCall: { callId: exec.callId, rootCallId: exec.rootCallId },
         ...exec.agent ? { owner: exec.agent.id } : {},
         output: processSources(() => proc),
         run: () => {
-          const hooks = processJob(
+          const job = processJob(
             async (signal) => {
               proc = await ctx.shell.execute({ ...spec, signal })
               return proc
             },
             started => processOutcome(started, escalationModes),
           )
+          hooks = job
           return {
-            done: hooks.done,
+            done: job.done,
             // A kill from outside this call (the human's, a parallel job_kill)
             // reaches the process here; its reason is what the model reads.
             cancel: (reason) => {
               stopped = reason
-              hooks.cancel(reason)
+              job.cancel(reason)
             },
           }
         },
       })
-      return { id, process: () => proc, stopped: () => stopped }
+      return { id, process: () => proc, stopped: () => stopped, failure: () => hooks?.failure() }
     }
     /** Wait on a registered foreground command until it settles or the timeout passes. */
     const waitOnJob = async (registry: JobRegistry, attached: StartedJob, exec: ToolExecution, spec: ShellExecSpec) => {
@@ -333,6 +347,7 @@ export function apply(ctx: Context, config: Config = {}): void {
         await stop('timed out during preparation')
         return {
           kind: 'foreground' as const,
+          cwd: spec.workdir,
           exitCode: null,
           signal: null,
           timedOut: true,
@@ -350,6 +365,7 @@ export function apply(ctx: Context, config: Config = {}): void {
         const read = registry.read(attached.id, owner)
         return {
           kind: 'promoted' as const,
+          cwd: spec.workdir,
           jobId: attached.id,
           timeoutMs,
           output: renderJobRead(
@@ -362,19 +378,21 @@ export function apply(ctx: Context, config: Config = {}): void {
       // the split streams and classification the foreground result needs.
       registry.remove(attached.id, owner)
       const process = attached.process()
-      // No process was published: the starter failed before the spawn, and the
-      // job's terminal detail is the failure the foreground projection would
-      // have rejected with.
-      if (process === undefined) throw new Error(view.detail)
-      const result = await process.result()
+      // No process was published: the starter failed before the spawn. The
+      // original error keeps its class and code, exactly as the foreground
+      // projection would have rejected; a kill before the spawn has only its detail.
+      if (process === undefined) {
+        const failure = attached.failure()
+        throw failure === undefined ? new Error(view.detail) : launchFailure(failure.error, exec.signal)
+      }
+      const result = await process.result().catch((error: unknown) => { throw launchFailure(error, exec.signal) })
       const stopped = attached.stopped()
-      return { kind: 'foreground' as const, ...canonicalBashResult(result), ...stopped !== undefined ? { stopped } : {} }
+      return { kind: 'foreground' as const, ...canonicalBashResult(result, spec.workdir), ...stopped !== undefined ? { stopped } : {} }
     }
     return defineTool({
       name: 'bash',
       description: bashDescription(),
       parameters: {
-        command: { type: 'string', required: true, description: 'The bash command to execute.' },
         description: {
           type: 'string',
           required: true,
@@ -382,6 +400,7 @@ export function apply(ctx: Context, config: Config = {}): void {
             + '5-10 words (shown in the UI). Examples: "ls" → "List files in current directory"; '
             + '"git status" → "Show working tree status"; "npm install" → "Install package dependencies".',
         },
+        command: { type: 'string', required: true, description: 'The bash command to execute.' },
         timeoutMs: {
           type: 'number',
           description: promote
@@ -418,6 +437,7 @@ export function apply(ctx: Context, config: Config = {}): void {
               additionalProperties: false,
               properties: {
                 kind: { type: 'string', required: true, const: 'promoted' },
+                cwd: { type: 'string', required: true },
                 jobId: { type: 'string', required: true },
                 timeoutMs: { type: 'number', required: true },
                 output: { type: 'string', required: true },
@@ -428,6 +448,7 @@ export function apply(ctx: Context, config: Config = {}): void {
               additionalProperties: false,
               properties: {
                 kind: { type: 'string', required: true, const: 'foreground' },
+                cwd: { type: 'string', required: true },
                 exitCode: { required: true, oneOf: [{ type: 'integer' }, { type: 'null' }] },
                 signal: { required: true, oneOf: [{ type: 'string' }, { type: 'null' }] },
                 timedOut: { type: 'boolean', required: true },
@@ -476,6 +497,7 @@ export function apply(ctx: Context, config: Config = {}): void {
               ? renderPromoted(value)
               : renderResult(value as { kind: 'foreground' } & ShellRunResult, escalationModes),
         }],
+        presentationMeta: (_args, value) => ({ cwd: value.cwd }),
       },
       async execute(args: BashToolArgs, exec) {
         // Description is display metadata; workdir defaults to the caller's session.
@@ -487,7 +509,8 @@ export function apply(ctx: Context, config: Config = {}): void {
         const policy = approvedMode === undefined
           ? standingPolicy
           : { ...(standingPolicy as SandboxExecutionPolicy), mode: approvedMode }
-        const workdir = resolveWorkdir(args.workdir, exec, standingPolicy?.workspaceRoot)
+        const cwd = exec.agent === undefined ? undefined : await ctx.workingDirectory.ensure(exec.agent, exec.signal)
+        const workdir = resolveWorkdir(args.workdir, cwd)
         const dshEnv = ctx.shellEnv.collect(exec)
         const request: ShellExecRequest = {
           command: args.command,
@@ -499,14 +522,15 @@ export function apply(ctx: Context, config: Config = {}): void {
         if (args.run_in_background === true) {
           // Undeclared keys are allowed, so schema omission also needs enforcement.
           if (!backgroundEnabled) {
-            throw new Error('run_in_background is disabled for this deployment (enableRunInBackground: false)')
+            throw new JobError('run_in_background is disabled for this deployment (enableRunInBackground: false)', 'JOB_BACKGROUND_DISABLED')
           }
           if (jobs === undefined) {
-            throw new Error('background jobs unavailable: load @deepseek-ai/dsh-jobs and @deepseek-ai/dsh-tool-jobs')
+            throw new ToolContextUnavailableError('background jobs unavailable: load @deepseek-ai/dsh-jobs and @deepseek-ai/dsh-tool-jobs')
           }
           // The caller owns cancellation until ctx.jobs commits detached ownership.
           if (exec.signal.aborted) throw toolAborted()
-          return { kind: 'background' as const, jobId: startJob(jobs, args, exec, ctx.shell.resolve({ ...request, onExpiry: 'none' })).id }
+          const spec = ctx.shell.resolve({ ...request, onExpiry: 'none' })
+          return { kind: 'background' as const, jobId: startJob(jobs, args, exec, spec).id, cwd: spec.workdir }
         }
         // A foreground call is a job the tool waits on, so the command is
         // visible and killable from the moment it starts and outlives the wait
@@ -523,10 +547,15 @@ export function apply(ctx: Context, config: Config = {}): void {
           }
           if (attached !== undefined) return waitOnJob(jobs, attached, exec, spec)
         }
-        const foreground = await ctx.shell.execute(ctx.shell.resolve({ ...request, signal: exec.signal }))
-        const result = await foreground.result()
+        const spec = ctx.shell.resolve({ ...request, signal: exec.signal })
+        let result: ShellRunResult
+        try {
+          result = await (await ctx.shell.execute(spec)).result()
+        } catch (error) {
+          throw launchFailure(error, exec.signal)
+        }
         if (result.aborted) throw toolAborted()
-        return { kind: 'foreground' as const, ...canonicalBashResult(result) }
+        return { kind: 'foreground' as const, ...canonicalBashResult(result, spec.workdir) }
       },
       presentCall: presentBashCall,
       presentResult: presentBashResult,

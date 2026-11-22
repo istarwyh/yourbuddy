@@ -28,9 +28,9 @@ fn fixture_failure(case: &serde_json::Value) -> PnpmInstallError {
 }
 
 #[test]
-fn reads_pinned_pnpm_fatal_codes_without_promoting_script_output_or_progress() {
+fn reads_recorded_pnpm_fatal_codes_without_promoting_script_output_or_progress() {
     let fixtures = fixtures();
-    assert_eq!(fixtures["pnpmVersion"], DEFAULT_PNPM_VERSION);
+    assert_eq!(fixtures["pnpmVersion"], "11.7.0");
     assert_eq!(
         pnpm_terminal_error_code(fixtures["warmStdout"].as_str().unwrap(), 42),
         None

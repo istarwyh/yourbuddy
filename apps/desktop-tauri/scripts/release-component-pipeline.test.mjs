@@ -31,7 +31,7 @@ const preparationFiles = [
     [`bundled/capabilities/${key}/node_modules/ordinary/package.json`]: '{"name":"ordinary","version":"1.0.0"}',
   }))),
   { 'bundled/harness/yourbuddy-pnpm-store.tar.gz': 'store control' },
-  { 'bundled/toolchain/manifest.json': '{}', 'bundled/toolchain/pnpm-11.7.0.tgz': 'fixed pnpm control' },
+  { 'bundled/toolchain/manifest.json': '{}', 'bundled/toolchain/pnpm-11.28.5.tgz': 'fixed pnpm control' },
   { 'bundled/yourbuddy-runtime/manifest.json': '{}' },
 ]
 
@@ -71,7 +71,7 @@ test('prepares source, capabilities, store, toolchain and runtime once, then see
   const root = fixture(t)
   assert.equal(prepareDist(root), 0)
   assert.deepEqual(stages(root), preparationScripts)
-  assert.equal(readFileSync(join(root, 'component-channel', 'pnpm-11.7.0.tgz'), 'utf8'), 'fixed pnpm control')
+  assert.equal(readFileSync(join(root, 'component-channel', 'pnpm-11.28.5.tgz'), 'utf8'), 'fixed pnpm control')
   for (const files of preparationFiles) {
     for (const [path, expected] of Object.entries(files)) assert.equal(readFileSync(join(root, path), 'utf8'), expected)
   }

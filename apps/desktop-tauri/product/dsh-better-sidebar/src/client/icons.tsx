@@ -5,17 +5,13 @@
  * (`descriptor.icon`), not in a type-keyed switch — the icon mapping was
  * registry-ized with the tab types.
  */
-import type { IconProps } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconPanelLeftOutlineRegular, type IconProps } from '@deepseek-ai/dsh-client-ui-primitives'
 
-/**
- * Bottom-panel toggle glyph (the "底栏" button): a frame with a filled strip
- * along its BOTTOM edge, in the app's outline style.
- */
+/** Bottom toggle: reuse the native panel glyph, rotated toward the bottom. */
 export const IconPanelBottomOutline16 = ({ size = 16, className }: IconProps) => (
-  <svg width={size} height={size} className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="1.5" y="2" width="13" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
-    <rect x="3.25" y="10" width="9.5" height="2.75" rx="1" fill="currentColor" stroke="none" />
-  </svg>
+  <span className={className} style={{ display: 'inline-flex', width: size, height: size, transform: 'rotate(-90deg)' }}>
+    <IconPanelLeftOutlineRegular size={size} />
+  </span>
 )
 
 /**
@@ -30,22 +26,25 @@ export const IconTerminalOutline16 = ({ size = 16, className }: IconProps) => (
   </svg>
 )
 
+/**
+ * Settings-navigation glyph for the "Side card" section. The shell asks for a
+ * square edge and tints the SVG with `currentColor`, so this stays a plain
+ * two-tone outline mark: the side panel plus the two rails it docks against.
+ */
+export const IconSideCardNav = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 7v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M6 5v14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <rect x="10" y="3" width="12" height="18" rx="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
 /** Diff glyph in the app's outline style: a file frame with a plus and a minus row. */
 export const IconDiffOutline16 = ({ size = 16, className }: IconProps) => (
   <svg width={size} height={size} className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="1.5" y="1.5" width="13" height="13" rx="2.5" stroke="currentColor" strokeWidth="1.5" />
     <path d="M4 5h3M5.5 3.5v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     <path d="M9.5 12.5h2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-  </svg>
-)
-
-/**
- * Stop glyph for the background-job kill button: a filled square in the
- * app's outline scale (16), the universal "halt this work" mark.
- */
-export const IconStopOutline16 = ({ size = 16, className }: IconProps) => (
-  <svg width={size} height={size} className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="4" width="8" height="8" rx="1.5" fill="currentColor" stroke="none" />
   </svg>
 )
 

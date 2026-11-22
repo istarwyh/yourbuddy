@@ -392,7 +392,9 @@ export function installProductPlugins(bundleRoot) {
   const productPatches = [...productPlugins, ...defaultHarnessPlugins]
     .filter(plugin => plugin.embedPatch !== false)
     .map(plugin => readFileSync(join(plugin.root, 'cordis.patch.yml'), 'utf8').trim())
-  writeFileSync(webPatchPath, `${webPatch}\n\n${marker}\n\n${productPatches.join('\n\n')}\n`)
+  // Bundle defaults precede the editable Profile; a final overlay config would replace user preferences.
+  const sidebarDefaults = '- id: better-sidebar\n  config:\n    presentation: slot'
+  writeFileSync(webPatchPath, `${webPatch}\n\n${marker}\n\n${productPatches.join('\n\n')}\n\n${sidebarDefaults}\n`)
 }
 
 /** Find one exact YAML line or reject an upstream layout the product generator does not understand. */
@@ -425,25 +427,15 @@ function deriveProductAgentPreset(standardPatch, preset) {
     lines[0] = `# YourBuddy Agent preset ${preset.id}: derived from the shipped standard declaration.`
   }
 
-  const codexRows = lines
-    .map((line, index) => line.trim() === '- id: tool-subagent-codex' ? index : -1)
-    .filter(index => index !== -1)
-  if (codexRows.length !== 1) {
-    throw new Error(`YourBuddy Agent Preset expected one Codex tool row, found ${codexRows.length}`)
-  }
-  const rowStart = codexRows[0]
-  const rowIndent = lines[rowStart].length - lines[rowStart].trimStart().length
-  const nextRow = lines.findIndex((line, index) => index > rowStart
-    && line.length - line.trimStart().length === rowIndent
-    && line.trimStart().startsWith('- id: '))
-  const rowEnd = nextRow === -1 ? lines.length : nextRow
-  const disabledIndexes = lines
-    .map((line, index) => index > rowStart && index < rowEnd && line.trim() === 'disabled: true' ? index : -1)
-    .filter(index => index !== -1)
-  if (disabledIndexes.length !== 1) {
-    throw new Error(`YourBuddy Agent Preset expected one disabled Codex tool flag, found ${disabledIndexes.length}`)
-  }
-  lines.splice(disabledIndexes[0], 1)
+  const delegationIndex = onlyLineIndex(lines, '              - id: tool-subagent-control', 'delegation control row')
+  lines.splice(delegationIndex, 0,
+    '              - id: tool-subagent-codex',
+    "                name: '@deepseek-ai/dsh-tool-subagent'",
+    '                config:',
+    '                  provider: codex',
+    '                  toolName: subagent_codex',
+    '                  maxDepth: provider-managed',
+  )
 
   if (preset.id === creatorAgentPreset.id) {
     const codingPersona = 'prefix: You are a coding agent powered by the {{model}} model.'
@@ -711,7 +703,7 @@ const bundlePkg = {
   name: '@deepseek-ai/dsh-desktop-bundle',
   private: true,
   version: rootPkg.version,
-  packageManager: rootPkg.packageManager ?? 'pnpm@11.7.0',
+  packageManager: rootPkg.packageManager ?? 'pnpm@11.28.5',
 }
 writeFileSync(join(outRoot, 'package.json'), `${JSON.stringify(bundlePkg, null, 2)}\n`)
 

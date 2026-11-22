@@ -6,14 +6,15 @@ export declare function EditorHost(props: {
     store: SidebarStore;
     scope: SessionScope;
     tab: SidebarTab;
+    /** Whether this tab is the active one with its panel open: a parked tab
+     *  must not keep polling (the workbench keeps every tab body mounted). */
+    visible?: boolean;
     expanded: string[];
     revealed: string[];
     onToggleDir: (path: string) => void;
     onReferenceFile: (path: string, isDir: boolean) => void;
-    /** Session-bound native resource open; absent in the bottom workbench. */
+    /** Native occurrence-bound file open actions, absent in the local workbench. */
     onOpenFile?: (path: string) => void;
-    /** Session-bound replacement of the native tab that owns this editor. */
     onOpenFileInPlace?: (path: string) => void;
-    /** Session-bound open in a new native pane beside this editor. */
     onOpenFileSide?: (path: string) => void;
 }): import("react").JSX.Element;

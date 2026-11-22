@@ -622,7 +622,7 @@ mod tests {
                     "/usr/bin/node".into(),
                     "-v".into(),
                 ],
-                ok_out("v22.19.0\n"),
+                ok_out("v24.22.3\n"),
             ),
             (
                 vec![
@@ -833,7 +833,7 @@ mod tests {
                     preferred_node.into(),
                     "-v".into(),
                 ],
-                ok_out("v22.19.0\n"),
+                ok_out("v24.22.3\n"),
             ),
             (
                 vec![

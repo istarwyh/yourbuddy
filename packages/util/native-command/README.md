@@ -27,6 +27,8 @@ English | [中文](README.zh.md)
 
 Use this runner when a host-side integration must execute one native command and needs its output, its failure, or both — and must never involve a shell.
 
+`isWsl()` distinguishes Linux processes with WSL environment or kernel markers from ordinary Linux and native Windows processes. Detection remains true when Windows interoperation is disabled; callers must check the requested Windows capability separately.
+
 ### Running a command
 
 ```ts
@@ -68,7 +70,6 @@ The command runner is a thin wrapper over Node's `execFile`. The path opener sel
 | [`src/index.ts`](src/index.ts) | Public command-runner and path-opener exports |
 | [`src/runner.ts`](src/runner.ts) | Shell-free `execFile` adapter |
 | [`src/path-opener.ts`](src/path-opener.ts) | Desktop detection, open intents, browser preference, and WSL translation |
-| — | No runtime invariant companion is published; each run is one stateless child-process round trip with no owned event stream or mutable runtime data; behavior is enforced by unit tests. |
 
 ### What execFile gives the runner
 

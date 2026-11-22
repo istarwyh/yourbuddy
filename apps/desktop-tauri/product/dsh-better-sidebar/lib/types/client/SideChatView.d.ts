@@ -1,6 +1,7 @@
 import type { Context } from '../context-types.ts';
 import type { SessionScope } from './api.ts';
 import type { SidebarTab } from './state.ts';
+import { type SidechatSubmitKey } from '../prefs-shared.ts';
 /** The thread a tab is bound to (durable in tab.meta across refreshes). */
 export declare function sidechatThreadIdOf(tab: SidebarTab): string | undefined;
 /** Park a thread id for the NEXT sidechat openTab to reattach. */
@@ -13,4 +14,10 @@ export declare function SideChatView(props: {
     scope: SessionScope;
     tab: SidebarTab;
     visible: boolean;
+    /** Which gesture submits the draft: a plain `Enter` (the default, host
+     *  semantics) or exactly `Cmd+Enter` / `Ctrl+Enter`. The side card settings
+     *  page feeds it from the side-chat feature's own preferences (see
+     *  `sidechatSubmitKeyOf` in prefs.ts); absent reads the default, which keeps
+     *  every existing composition unchanged. */
+    submitKey?: SidechatSubmitKey;
 }): React.ReactNode;

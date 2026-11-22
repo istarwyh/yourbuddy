@@ -7,6 +7,7 @@ import { tr } from './i18n.js'
 import { coverPrompt, figurePrompt, shotPrompt } from './images.js'
 import { newId } from './ops.js'
 import { imageReady } from './settings.js'
+import { draftFormat } from './style.js'
 
 const CONCURRENCY = 3
 // 模型卡住不出字时，到点改用草稿，不让进度条一直转
@@ -136,13 +137,14 @@ export function applyRevision(production, revise, { canDraw = true } = {}) {
 
 export class Producer {
   /**
-   * @param {{store: object, settings: object, callText: Function, generate: Function}} deps - 存储、设置、文本模型和生图函数。
+   * @param {{store: object, settings: object, callText: Function, generate: Function, ready?: Function}} deps - 存储、设置、文本模型和生图函数。
    */
-  constructor({ store, settings, callText, generate }) {
+  constructor({ store, settings, callText, generate, ready = imageReady }) {
     this.store = store
     this.settings = settings
     this.callText = callText
     this.generate = generate
+    this.ready = ready
     this.jobs = new Map()
     this.assets = new Set()
   }
@@ -173,16 +175,21 @@ export class Producer {
     }, { undoable: false })
   }
 
-  async start(id) {
+  async start(id, { withImages } = {}) {
     if (this.jobs.has(id)) return false
     const state = await this.store.read()
     const item = state.items.find(row => row.id === id)
     if (!item) throw Object.assign(new Error(tr('找不到这条灵感')), { status: 404 })
-    const job = { stage: 'brief', text: '', planText: '', controller: new AbortController() }
+    // 单次选择优先；没传就按设置里的默认值
+    const settings = await this.settings.read()
+    const draw = typeof withImages === 'boolean' ? withImages : settings.generateImages !== false
+    const job = { stage: 'brief', text: '', planText: '', controller: new AbortController(), withImages: draw }
     this.jobs.set(id, job)
     await this.store.mutate('开始成稿', (draft) => {
       const target = draft.items.find(row => row.id === id)
-      target.production = { status: 'running', stage: 'brief', startedAt: new Date().toISOString(), title: target.title, article: '', cover: null, images: [], shots: [] }
+      // 重新成稿后还存回原来的文件夹，不会每做一次多出一个
+      const { savedPath, savedHashes } = target.production ?? {}
+      target.production = { status: 'running', stage: 'brief', withImages: draw, startedAt: new Date().toISOString(), format: draftFormat(draft.draftFormat), title: target.title, article: '', cover: null, images: [], shots: [], ...(savedPath ? { savedPath, savedHashes } : {}) }
       return draft
     }, { undoable: false })
     // 不等待：浏览器靠轮询拿进度
@@ -218,11 +225,14 @@ export class Producer {
       if (plan.images.length < settings.imageCount) plan.images = [...plan.images, ...backup.images.slice(plan.images.length)]
       if (plan.shots.length < settings.shotCount) plan.shots = [...plan.shots, ...backup.shots.slice(plan.shots.length).map((row, i) => ({ ...row, no: plan.shots.length + i + 1 }))]
 
-      const ready = imageReady(settings)
+      const configured = this.ready(settings)
+      const draw = job.withImages !== false
+      const ready = configured && draw
       const initial = ready ? 'pending' : 'skipped'
       job.stage = 'making'
       await this.patch(id, (production) => {
         production.stage = 'making'
+        production.withImages = draw
         production.title = plan.title
         production.coverText = plan.coverText
         production.facts = plan.facts
@@ -231,7 +241,7 @@ export class Producer {
         production.cover = { prompt: plan.cover, status: initial }
         production.images = plan.images.map(row => ({ ...row, status: initial }))
         production.shots = plan.shots.map(row => ({ ...row, status: initial }))
-        if (!ready) production.needsProvider = true
+        if (!configured && draw) production.needsProvider = true
       })
 
       // 策划案定了之后，文章和所有画面同时开工
@@ -305,7 +315,7 @@ export class Producer {
         return await this.generate(image, prompt, { signal })
       } catch (err) {
         const limited = err?.status === 429 || /429/.test(String(err?.message))
-        if (!limited || attempt >= RETRY_WAIT_MS.length || signal?.aborted) throw err
+        if (err.permanent || !limited || attempt >= RETRY_WAIT_MS.length || signal?.aborted) throw err
         await new Promise((resolve, reject) => {
           const timer = setTimeout(resolve, RETRY_WAIT_MS[attempt] * (this.retryScale ?? 1))
           signal?.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('cancelled')) }, { once: true })
@@ -348,7 +358,7 @@ export class Producer {
   /** 单独重画一张。 */
   async regenerate(id, target) {
     const settings = await this.settings.read()
-    if (!imageReady(settings)) throw Object.assign(new Error(tr('还没有接入生图模型')), { status: 400 })
+    if (!this.ready(settings)) throw Object.assign(new Error(tr('还没有接入生图模型')), { status: 400 })
     if (!parseTarget(target)) throw Object.assign(new Error(tr('目标无效')), { status: 400 })
     const key = `${id}:${target}`
     if (this.assets.has(key)) return

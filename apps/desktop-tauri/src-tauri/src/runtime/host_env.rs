@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use super::config::{DEFAULT_NODE_VERSION, MIN_NODE_MINOR_FOR_22, MIN_UNRESTRICTED_NODE_MAJOR};
+use super::config::{DEFAULT_NODE_VERSION, MIN_NODE_MINOR_FOR_24, MIN_UNRESTRICTED_NODE_MAJOR};
 use super::env_path::{is_direct_spawnable_cli, which_on_host};
 use super::process::hide_console;
 use crate::i18n::{self, Msg};
@@ -15,12 +15,12 @@ pub struct HostToolchain {
     pub pnpm: Option<PathBuf>,
 }
 
-/// Whether a `node --version` string satisfies `^22.19 || >=24`.
+/// Whether a `node --version` string satisfies `>=24.9.0`.
 pub fn node_version_compatible(raw: &str) -> bool {
     let Some((major, minor, _)) = parse_semver(raw) else {
         return false;
     };
-    (major == 22 && minor >= MIN_NODE_MINOR_FOR_22) || major >= MIN_UNRESTRICTED_NODE_MAJOR
+    (major == 24 && minor >= MIN_NODE_MINOR_FOR_24) || major >= MIN_UNRESTRICTED_NODE_MAJOR
 }
 
 /// Probe `binary --version` and return the first line when the process succeeds.
@@ -267,9 +267,10 @@ mod tests {
 
     #[test]
     fn accepts_engine_range_and_rejects_older_node() {
-        assert!(node_version_compatible("v22.19.0"));
-        assert!(node_version_compatible("22.20.1"));
-        assert!(node_version_compatible("v24.4.0"));
+        assert!(node_version_compatible("v24.9.0"));
+        assert!(node_version_compatible("24.22.3"));
+        assert!(!node_version_compatible("v24.8.9"));
+        assert!(!node_version_compatible("v22.19.0"));
         assert!(node_version_compatible("v25.0.0-nightly"));
         assert!(!node_version_compatible("v22.18.0"));
         assert!(!node_version_compatible("v20.19.0"));

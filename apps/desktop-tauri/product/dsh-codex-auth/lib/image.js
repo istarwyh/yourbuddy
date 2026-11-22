@@ -1,4 +1,4 @@
-import { n as readBoundedResponseText, t as liveValue } from "./volatile-config-DNSIaT45.js";
+import { n as readBoundedResponseText, t as liveValue } from "./volatile-config-CDXtvTw0.js";
 import z from "@deepseek-ai/schemastery";
 import { basename } from "node:path";
 import { HarnessError } from "@deepseek-ai/dsh-llm";
@@ -834,6 +834,7 @@ function apply(ctx, config) {
 		});
 	};
 	const refreshAll = () => {
+		if (disposed) return;
 		for (const agent of ctx.agents.list()) refreshAgent(agent);
 	};
 	ctx.effect(() => () => {

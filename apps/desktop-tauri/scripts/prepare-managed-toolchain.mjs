@@ -9,18 +9,18 @@ const outRoot = join(desktopRoot, 'bundled', 'toolchain')
 
 export const TOOLCHAIN_ARTIFACTS = [
   {
-    file: 'node-v22.19.0-darwin-arm64.tar.gz',
-    url: 'https://nodejs.org/dist/v22.19.0/node-v22.19.0-darwin-arm64.tar.gz',
+    file: 'node-v24.22.3-darwin-arm64.tar.gz',
+    url: 'https://nodejs.org/dist/v24.22.3/node-v24.22.3-darwin-arm64.tar.gz',
     algorithm: 'sha256',
     encoding: 'hex',
-    digest: 'c59006db713c770d6ec63ae16cb3edc11f49ee093b5c415d667bb4f436c6526d',
+    digest: 'ff6e17d4874b76d272212b908cc020d6e815fba5a6c7eaaa06add725840307fd',
   },
   {
-    file: 'pnpm-11.7.0.tgz',
-    url: 'https://registry.npmjs.org/pnpm/-/pnpm-11.7.0.tgz',
+    file: 'pnpm-11.28.5.tgz',
+    url: 'https://registry.npmjs.org/pnpm/-/pnpm-11.28.5.tgz',
     algorithm: 'sha512',
     encoding: 'base64',
-    digest: 'GcyFLBIMcSV2DyRD7mvgyltA+fUFmN4aCaHxd1A+AQ5Xwjx3ZG4B52HeWb+HT7IqM5jDOrlpH8E+uUa28PTWIA==',
+    digest: 'SEVj0wtMKtJ8tIqpT/KzAtvOvI/2vyiBbCWJiG4UbOf3bzVPO8GkOOb16XaMMCqgpvet2CMpA81M+BQmy8FNng==',
   },
 ]
 
@@ -50,8 +50,8 @@ export async function prepareManagedToolchain() {
   for (const artifact of TOOLCHAIN_ARTIFACTS) await ensureArtifact(artifact)
   const manifest = {
     platform: 'darwin-arm64',
-    nodeVersion: '22.19.0',
-    pnpmVersion: '11.7.0',
+    nodeVersion: '24.22.3',
+    pnpmVersion: '11.28.5',
     artifacts: TOOLCHAIN_ARTIFACTS.map(({ file, url, algorithm, encoding, digest }) => ({
       file, url, algorithm, encoding, digest,
     })),

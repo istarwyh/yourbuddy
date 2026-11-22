@@ -84,17 +84,16 @@ describe('toPiContext', () => {
       })],
       tools: [{ name: 'f', description: 'F', parameters: { type: 'object', properties: {} } }],
     })
-    expect(context.systemPrompt).toBe('be helpful')
-    expect(context.messages).toEqual([{ role: 'user', content: 'hi', timestamp: 0 }])
-    expect(context.tools).toEqual([
-      { name: 'f', description: 'F', parameters: { type: 'object', properties: {} } },
-    ])
+    expect(context).toEqual({
+      systemPrompt: 'be helpful',
+      tools: [{ name: 'f', description: 'F', parameters: { type: 'object', properties: {} } }],
+      messages: [{ role: 'user', content: 'hi', timestamp: 0 }],
+    })
   })
 
   it('omits empty tools and absent system prompt', () => {
     const context = toPiContext({ provider: 'deepseek', model: 'm', messages: [], tools: [] })
-    expect(context.systemPrompt).toBeUndefined()
-    expect(context.tools).toBeUndefined()
+    expect(context).toEqual({ messages: [] })
   })
 
   it('resolves durable image references into native pi-ai image content', async () => {
@@ -317,7 +316,7 @@ describe('toPiContext', () => {
     })
   })
 
-  it('splits mixed user text + tool results and lifts a leading system message into systemPrompt', () => {
+  it('preserves the leading system message ahead of user text and tool results', () => {
     const context = toPiContext({
       provider: 'deepseek',
       model: 'm',
@@ -368,7 +367,7 @@ describe('toPiContext', () => {
       content: [
         { type: 'thinking', thinking: 'private reasoning', thinkingSignature: 'think-sig', redacted: true },
         { type: 'text', text: 'calling', textSignature: 'text-sig' },
-        { type: 'toolCall', id: 'c1', name: 'f', arguments: { a: 1 }, thoughtSignature: 'tool-sig' },
+        { type: 'toolCall', id: 'c1', name: 'f', arguments: { a: 1 }, thoughtSignature: 'tool-sig', namespace: 'functions' },
       ],
     }))
     const context = toPiContext({
@@ -399,7 +398,7 @@ describe('toPiContext', () => {
       content: [
         { type: 'thinking', thinking: 'private reasoning', thinkingSignature: 'think-sig', redacted: true },
         { type: 'text', text: 'calling', textSignature: 'text-sig' },
-        { type: 'toolCall', id: 'c1', name: 'f', arguments: { a: 1 }, thoughtSignature: 'tool-sig' },
+        { type: 'toolCall', id: 'c1', name: 'f', arguments: { a: 1 }, thoughtSignature: 'tool-sig', namespace: 'functions' },
       ],
     })
   })
@@ -671,12 +670,14 @@ describe('toPiContext', () => {
     ['non-string response id', { ...validReplay, response: { ...validResponse, responseId: 1 } }, 'responseId must be a string'],
     ['non-string provider thinking level', { ...validReplay, response: { ...validResponse, providerThinkingLevel: 1 } }, 'providerThinkingLevel must be a string'],
     ['null provider thinking level', { ...validReplay, response: { ...validResponse, providerThinkingLevel: null } }, 'providerThinkingLevel must be a string'],
+    ['non-string prefix digest', { ...validReplay, response: { ...validResponse, prefixDigest: 1 } }, 'prefixDigest must be a string'],
     ['missing blocks', { response: validResponse }, 'blocks must be an array'],
     ['non-array blocks', { ...validReplay, blocks: 'text' }, 'blocks must be an array'],
     ['number block', { ...validReplay, blocks: [1] }, 'block 0 must be an object'],
     ['null block', { ...validReplay, blocks: [null] }, 'block 0 must be an object'],
     ['array block', { ...validReplay, blocks: [[]] }, 'block 0 must be an object'],
     ['unknown block type', { ...validReplay, blocks: [{ type: 'audio' }] }, 'block 0 has an unknown type'],
+    ['non-string namespace', { ...validReplay, blocks: [{ type: 'tool-call', namespace: 1 }] }, 'namespace must be a string'],
     ['non-string signature', { ...validReplay, blocks: [{ type: 'text', textSignature: 1 }] }, 'textSignature must be a string'],
     ['non-boolean redaction', { ...validReplay, blocks: [{ type: 'reasoning', redacted: 'yes' }] }, 'redacted must be boolean'],
   ])('degrades malformed replay state: %s', (_name, replayState, message) => {
@@ -724,7 +725,7 @@ describe('toStreamChunks', () => {
     if (requested === undefined) throw new Error('missing Anthropic catalog model')
     expect(transformMessages(context.messages, requested)[0]).toMatchObject({ content: native.content })
     expect(transformMessages(context.messages, { ...requested, id: 'other-model' })[0]).toMatchObject({
-      content: [{ type: 'text', text: 'reason' }],
+      content: [],
     })
   })
 
@@ -936,6 +937,19 @@ describe('mapStopReason / mapUsage', () => {
       stopReason: 'error',
       errorMessage: 'vector length limit exceeded',
     }))).toMatchObject({ kind: 'error', failure: { code: 'PI_AI_ERROR' } })
+  })
+
+  it.each([
+    // The gateway body as the Anthropic SDK renders it: the gateway's own 500 leads.
+    ['a gateway 500 relaying an upstream 401', '500 {"error":{"origin":"upstream","message":"upstream returned an error response: User not found.","type":"upstream_error","code":"upstream_response_error","upstream":{"provider":"custom","status":401,"body":{"error":{"type":"<nil>","message":"User not found."},"type":"error"}}}}', 'SERVER'],
+    ['a 502 quoting a non-retryable 400', '502 {"error":{"message":"upstream status 400"}}', 'SERVER'],
+    ['a 400 quoting a retryable 429', '400 {"error":{"message":"upstream returned 429 Too Many Requests"}}', 'INVALID_REQUEST'],
+    ['a 404 quoting a 403', '404 {"error":{"message":"upstream status 403"}}', 'PI_AI_ERROR'],
+    ['a leading 401', '401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}', 'AUTH'],
+    ['a leading 429', '429 Too Many Requests: slow down', 'RATE_LIMIT'],
+  ] as const)('classifies %s by its leading response status', (_label, errorMessage, code) => {
+    expect(mapStopReason(assistant({ stopReason: 'error', errorMessage })))
+      .toEqual({ kind: 'error', failure: { message: errorMessage, code } })
   })
 
   it.each([

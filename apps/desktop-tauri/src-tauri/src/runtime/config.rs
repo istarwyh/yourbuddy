@@ -1,16 +1,16 @@
 //! Mirror URLs and harness version for first-run provisioning.
 
-/// Default Node LTS aligned with repo engines (`^22.19 || >=24`).
-pub const DEFAULT_NODE_VERSION: &str = "22.19.0";
+/// Default Node LTS satisfying repo engines (`>=24.9.0`).
+pub const DEFAULT_NODE_VERSION: &str = "24.22.3";
 
-/// Lowest accepted Node 22 minor; matches workspace `engines.node`.
-pub const MIN_NODE_MINOR_FOR_22: u64 = 19;
+/// Lowest accepted Node 24 minor; matches workspace `engines.node`.
+pub const MIN_NODE_MINOR_FOR_24: u64 = 9;
 
 /// Major versions at or above this are accepted without a minor floor.
-pub const MIN_UNRESTRICTED_NODE_MAJOR: u64 = 24;
+pub const MIN_UNRESTRICTED_NODE_MAJOR: u64 = 25;
 
 /// pnpm version aligned with root packageManager.
-pub const DEFAULT_PNPM_VERSION: &str = "11.7.0";
+pub const DEFAULT_PNPM_VERSION: &str = "11.28.5";
 
 /// Host port range start for `dsh web`.
 pub const DEFAULT_WEB_PORT: u16 = 17_890;
@@ -28,13 +28,13 @@ pub const OFFLINE_PNPM_STORE_DIR: &str = ".yourbuddy-pnpm-store";
 pub const OFFLINE_PNPM_STORE_ARCHIVE: &str = "yourbuddy-pnpm-store.tar.gz";
 
 /// Pinned macOS arm64 Node archive and its official SHA-256 digest.
-pub const BUNDLED_NODE_ARCHIVE: &str = "node-v22.19.0-darwin-arm64.tar.gz";
+pub const BUNDLED_NODE_ARCHIVE: &str = "node-v24.22.3-darwin-arm64.tar.gz";
 pub const BUNDLED_NODE_SHA256: &str =
-    "c59006db713c770d6ec63ae16cb3edc11f49ee093b5c415d667bb4f436c6526d";
+    "ff6e17d4874b76d272212b908cc020d6e815fba5a6c7eaaa06add725840307fd";
 
 /// Pinned pnpm package and its registry SHA-512 digest (hex encoded).
-pub const BUNDLED_PNPM_ARCHIVE: &str = "pnpm-11.7.0.tgz";
-pub const BUNDLED_PNPM_SHA512: &str = "19cc852c120c7125760f2443ee6be0ca5b40f9f50598de1a09a1f177503e010e57c23c77646e01e761de59bf874fb22a3398c33ab9691fc13eb946b6f0f4d620";
+pub const BUNDLED_PNPM_ARCHIVE: &str = "pnpm-11.28.5.tgz";
+pub const BUNDLED_PNPM_SHA512: &str = "484563d30b4c2ad27cb48aa94ff2b302dbcebc8ff6bf28816c2589886e146ce7f76f354f3bc1a438e6f5e9768c302aa0a6f7add8232903cd4cf81426cbc14d9e";
 
 /// Parent for bundle-specific writable harness trees under app data.
 pub const HARNESS_VERSIONS_DIR: &str = "harness-versions";

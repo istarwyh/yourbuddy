@@ -1,39 +1,41 @@
 {
   "repository": "deepseek-ai/deepseek-harness",
   "channel": "stable-else-rc",
-  "tag": "dsh-v0.2.0-rc.2",
-  "version": "0.2.0-rc.2",
-  "commit": "639ed015397290b3745d163aafe02ffee4aa3f84",
+  "tag": "dsh-v0.2.2-rc.5",
+  "version": "0.2.2-rc.5",
+  "commit": "9c2670d3bce5275e0d1610272958121af87787bb",
   "patches": [
     {
       "id": "workbench-primary-layout",
       "file": "patches/dsh-workbench-primary-layout.patch",
-      "sha256": "378ea848d7e4ae7be94a7fe7a7adbfca9968cc31d909cfe292e5b38efe08d3df",
-      "baseCommit": "4e097fad4837e318903684bbea083a40996ae6a6",
-      "purpose": "Add an optional workbench slot whose occupant can remain beside the auxiliary region or collapse while that region is expanded, while retaining the default DSH conversation layout.",
+      "sha256": "a7055cc60d8788ed79cbfb7c0f3c303aa7ff50dfe886f52e34cb988cae93a59f",
+      "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
+      "purpose": "Add the optional primary workbench and retained auxiliary Session region, collapse the workbench only while the right Sidebar is shown, and expose a lower workspace collection seat.",
       "paths": [
-        "packages/client/ui-layout"
+        "packages/client/ui-layout",
+        "packages/client/ui-workspace"
       ]
     },
     {
       "id": "sidebar-header-actions",
       "file": "patches/dsh-sidebar-header-actions.patch",
-      "sha256": "50341401aabb05a81447fc2b96d7a677fc92eea579fa81f63c2c18bc108af329",
-      "baseCommit": "1915ef4a0d0ea64799c610eac45b4c6cdecbcd98",
-      "purpose": "Add a generic expanded-sidebar header action seat used by YourBuddy's compact native window controls.",
+      "sha256": "6a59513fe650884f8f5e31af4f6f615631a842ffe8162d25bfdf07721390fe60",
+      "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
+      "purpose": "Add expanded-sidebar header actions for compact native window controls and refresh the current client slot catalog.",
       "paths": [
         "packages/client/ui-sidebar",
         "packages/extensions/cordis-client-runner/src/client/slot-catalog.ts"
       ]
     },
     {
-      "id": "workbench-rightbar-collapse",
-      "file": "patches/dsh-workbench-rightbar-collapse.patch",
-      "sha256": "b6aee4511e70ed64bf61bf79f644be3ec3007b45adc8c5865fb2faa68e896ed7",
-      "purpose": "Collapse the product workbench only while the right Sidebar is actually shown, without changing the prospective width used to admit opening it.",
+      "id": "native-sidebar-targeted-opens",
+      "file": "patches/dsh-native-sidebar-targeted-opens.patch",
+      "purpose": "Expose adopted-Session targeted resource/page opens, close and adoption notifications, and strict right-hand pane opens without changing Session selection.",
       "paths": [
-        "packages/client/ui-layout"
-      ]
+        "packages/client/ui-sidebar-right"
+      ],
+      "baseCommit": "9c2670d3bce5275e0d1610272958121af87787bb",
+      "sha256": "ba798893f7f9686fd706df2a3eecea661469abebaa091dc42ace09e2069f136a"
     }
   ]
 }

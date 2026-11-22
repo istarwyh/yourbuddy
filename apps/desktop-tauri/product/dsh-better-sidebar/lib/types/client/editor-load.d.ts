@@ -13,14 +13,33 @@
  *      match could not see (the builtin NUL probe on `binary-download`).
  */
 import type { FileViewerDescriptor } from './service.ts';
-/** One host fs.read result (mirror of the wire; `head` present when binary). */
-export interface FsReadOutcome {
-    binary: boolean;
+/**
+ * Whether one `fs.read` failure means the target is a DIRECTORY.
+ *
+ * The host answers a directory with the dedicated `fs-directory` wire code
+ * (`readText` in src/index.ts). That answer is not an error to show: the
+ * editor host promotes the tab to the plugin's folder window instead, so a
+ * chat folder link, a `sidebar_open` folder open whose seed lost `meta.dir`,
+ * and a directory pasted into the address bar all land on the tree. The test
+ * is structural on purpose — the jsdom fixtures model the wire error as a
+ * plain `{ code, message }` object, and the code is the whole contract.
+ */
+export declare function isDirectoryReadError(error: unknown): boolean;
+/** One host fs.read result (mirror of the wire; `head` present when binary
+ *  or when the file was too large to hand over as a document). */
+export type FsReadOutcome = {
+    kind: 'text';
     content: string;
-    truncated: boolean;
-    /** base64 of the first bytes (present on binary reads; sniffing material). */
-    head?: string;
-}
+    size: number;
+} | {
+    kind: 'binary';
+    size: number;
+    head: string;
+} | {
+    kind: 'too-large';
+    size: number;
+    head: string;
+};
 /** What the editor host should do next. */
 export type EditorLoadAction = 
 /** No renderer: show the download UI. */
@@ -32,7 +51,12 @@ export type EditorLoadAction =
     kind: 'render';
     viewer: FileViewerDescriptor;
     content?: string;
-    truncated?: boolean;
+    size?: number;
+    /** Present when the file is above the editable threshold: the viewer must
+     *  render the read-only paged preview rather than an editor. */
+    largeFile?: {
+        size: number;
+    };
     mediaUrl?: string;
     customData?: unknown;
 }
@@ -58,6 +82,11 @@ export declare function planFirstMatch(viewer: FileViewerDescriptor | undefined,
 /**
  * Decide what an fsRead result means for the editor.
  * - Text: the first match stands (content is valid for any fsRead viewer).
+ * - Too large to edit: the viewer still renders, but with `largeFile` instead
+ *   of a document — it shows the read-only paged preview. The head bytes ride
+ *   the result so a `detect` viewer gets the same chance it gets on a binary
+ *   read, which is what keeps a media viewer working for a huge image and what
+ *   lets a plugin claim an oversized format it recognises.
  * - Binary: the host head bytes enable a re-match — a `detect` viewer (e.g.
  *   a plugin sniffing a binary format) may claim the file. `custom` viewers
  *   load their own bytes; `mediaUrl`/`none` viewers render the media route;

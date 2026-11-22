@@ -142,6 +142,7 @@ export const TRANSLATION_SCOPE_GLOB_EXCLUDES = [
   '**/__pycache__/**',
   '**/.pytest_cache/**',
   'apps/web/dist/**',
+  'apps/cli/docs/**',
   '.artifacts/**',
   // Rust build output (the desktop crate copies the bundled harness tree into
   // src-tauri/target during a local build); it duplicates shipped sources.
@@ -167,6 +168,7 @@ function isTranslationSourceExcluded(file: string): boolean {
       || segment.startsWith('.doc-typecheck-')
     || segment.startsWith('.node-next-types-'))
     || file.startsWith('apps/web/dist/')
+    || file.startsWith('apps/cli/docs/')
     || file.startsWith('python/sdk-runtime/src/deepseek_harness_runtime/runtime/')
 }
 
@@ -324,6 +326,7 @@ export function requiresSourceLanguageSwitcher(source: string): boolean {
   return ![
     'docs/agent-lifecycle.md',
     'docs/capability-seams.md',
+    'docs/cli-help.md',
     'docs/config-catalog.md',
     'docs/cordis-api/context.md',
     'docs/cordis-api/events.md',

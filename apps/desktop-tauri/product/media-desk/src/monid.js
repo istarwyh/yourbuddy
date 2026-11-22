@@ -1,7 +1,7 @@
 // 抓账号：通过用户自己装好的 Monid 命令行读取公开内容和互动数据。
 // 密钥由 Monid 自己保管，这里只调用命令，不读也不存。每次调用都花用户的余额，所以端点和条数都是写死的。
 import { execFile } from 'node:child_process'
-import { access, constants, writeFile } from 'node:fs/promises'
+import { access, constants, readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { delimiter, dirname, join } from 'node:path'
 import { assertPublicUrl } from './harvest.js'
@@ -224,7 +224,7 @@ export function normalizePosts(platform, output) {
     return (output?.timeline ?? []).filter(row => /^\d+$/.test(row?.tweet_id ?? '')).map((row) => {
       const body = text(row.text, 2000)
       const at = Date.parse(row.created_at)
-      const photo = (row.media ?? []).map(m => m?.media_url_https ?? m?.url).find(Boolean)
+      const photo = (Array.isArray(row.media) ? row.media : []).map(m => m?.media_url_https ?? m?.url).find(Boolean)
       return {
         id: row.tweet_id, title: firstLine(body, tr('无标题')), body, publishedAt: Number.isFinite(at) ? new Date(at).toISOString() : new Date().toISOString(),
         url: `https://x.com/${screen}/status/${row.tweet_id}`, cover: httpsUrl(photo),
@@ -265,12 +265,49 @@ export function normalizeProfile(platform, { profile, relation }) {
   return { nickname: text(data.name, 40), description: text(data.sign, 300), followers: count(relation?.follower ?? relation?.data?.follower) }
 }
 
+/** Windows 上 npm 的全局 shim 是 monid.cmd（CreateProcess 起不了它），这里顺着 shim 找出 CLI 的 JS 入口。 */
+export async function resolveMonidEntry(bin) {
+  const seen = new Set()
+  let file = bin
+  for (let hop = 0; hop < 3 && file; hop += 1) {
+    if (seen.has(file)) return null
+    seen.add(file)
+    const dir = dirname(file)
+    const direct = join(dir, 'node_modules', '@monid-ai', 'cli', 'dist', 'index.js')
+    try {
+      await access(direct, constants.F_OK)
+      return direct
+    } catch { /* 继续往下找 */ }
+    let text = ''
+    try {
+      text = await readFile(file, 'utf8')
+    } catch {
+      return null
+    }
+    const inline = text.match(/node_modules[\\/]+@monid-ai[\\/]+cli[\\/]+dist[\\/]+index\.js/)
+    if (inline) {
+      const abs = join(dir, inline[0].replace(/\\/g, '/'))
+      try {
+        await access(abs, constants.F_OK)
+        return abs
+      } catch {
+        return null
+      }
+    }
+    const next = text.match(/["']([^"'\r\n]*monid\.cmd)["']/i)
+    file = next && next[1] !== file ? next[1] : null
+  }
+  return null
+}
+
 /** 找到 monid 命令。桌面版从访达启动时 PATH 很短，所以要多找几个常见位置，再问一次登录 shell。 */
 function createLocator(exec) {
   let cached = null
-  const shell = process.env.SHELL || '/bin/zsh'
+  const win = process.platform === 'win32'
+  const shell = win ? process.env.ComSpec || 'cmd.exe' : process.env.SHELL || '/bin/zsh'
+  const names = win ? ['monid.cmd', 'monid.exe', 'monid.bat', 'monid'] : ['monid']
   const ask = command => new Promise((resolve) => {
-    exec(shell, ['-lc', command], { timeout: 8000 }, (err, stdout) => resolve(err ? '' : String(stdout).trim().split('\n').pop() ?? ''))
+    exec(shell, win ? ['/d', '/s', '/c', command] : ['-lc', command], { timeout: 8000 }, (err, stdout) => resolve(err ? '' : String(stdout).trim().split(/\r?\n/).pop() ?? ''))
   })
   return async () => {
     if (cached) return cached
@@ -278,20 +315,23 @@ function createLocator(exec) {
     const dirs = [...(process.env.PATH ?? '').split(delimiter), '/opt/homebrew/bin', '/usr/local/bin', join(home, '.npm-global', 'bin'), join(home, '.local', 'bin'), join(home, '.volta', 'bin'), join(home, '.bun', 'bin')]
     let bin = null
     for (const dir of dirs.filter(Boolean)) {
-      try {
-        await access(join(dir, 'monid'), constants.X_OK)
-        bin = join(dir, 'monid')
-        break
-      } catch { /* 下一个位置 */ }
+      for (const name of names) {
+        try {
+          await access(join(dir, name), constants.X_OK)
+          bin = join(dir, name)
+          break
+        } catch { /* 下一个位置 */ }
+      }
+      if (bin) break
     }
     if (!bin) {
-      const found = await ask('command -v monid')
-      if (found.startsWith('/')) bin = found
+      const found = await ask(win ? 'where monid' : 'command -v monid')
+      if (found && (win || found.startsWith('/'))) bin = found
     }
     if (!bin) return null
     // 命令行靠 node 运行，子进程要能找到它
-    const login = await ask('printf %s "$PATH"')
-    cached = { bin, path: [dirname(bin), login, process.env.PATH, '/opt/homebrew/bin', '/usr/local/bin'].filter(Boolean).join(delimiter) }
+    const login = win ? '' : await ask('printf %s "$PATH"')
+    cached = { bin, entry: win ? await resolveMonidEntry(bin) : null, path: [dirname(bin), login, process.env.PATH, '/opt/homebrew/bin', '/usr/local/bin'].filter(Boolean).join(delimiter) }
     return cached
   }
 }
@@ -318,9 +358,14 @@ export function createMonidRunner(exec = execFile, locate = createLocator(exec))
   return async (args, timeoutSeconds = 30) => {
     const found = await locate()
     if (!found) return null
+    // Windows 的 .cmd shim 不能直接用 execFile 起（spawn EINVAL）：改走 node + CLI 的 JS 入口，参数原样传、不经过 shell
+    const file = found.entry ? process.execPath : found.bin
+    const argv = found.entry ? [found.entry, ...args] : args
+    const env = { ...process.env, PATH: found.path, NO_COLOR: '1' }
+    if (found.entry && process.versions.electron) env.ELECTRON_RUN_AS_NODE = '1'
     return new Promise((resolve, reject) => {
       // 不经过 shell，参数原样传给命令
-      exec(found.bin, args, { timeout: timeoutSeconds * 1000, maxBuffer: MAX_OUTPUT, env: { ...process.env, PATH: found.path, NO_COLOR: '1' } }, (err, stdout, stderr) => {
+      exec(file, argv, { timeout: timeoutSeconds * 1000, maxBuffer: MAX_OUTPUT, env }, (err, stdout, stderr) => {
         const parsed = parseOutput(stdout)
         if (parsed) return resolve(parsed)
         if (err) return reject(new Error(text(String(stderr ?? '') || err.message, 200) || tr('Monid 命令运行失败')))

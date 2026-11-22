@@ -7,10 +7,10 @@ import { standardDecoratorPlugin, vitestExecArgv } from './vitest.shared.ts'
 /** Owner-local assembled expected-output tests that do not use a recorded session as their input. */
 export default defineConfig({
   root: fileURLToPath(new URL('../../', import.meta.url)),
-  plugins: [tsconfigPaths({ projects: ['./tsconfig.base.json'] }), standardDecoratorPlugin()],
+  plugins: [tsconfigPaths({ projects: [fileURLToPath(new URL('../../tsconfig.base.json', import.meta.url))] }), standardDecoratorPlugin()],
   test: {
     execArgv: vitestExecArgv,
-    setupFiles: ['./scripts/test-proxy-environment.ts', './scripts/test-invariants.ts'],
+    setupFiles: ['./scripts/test-proxy-environment.ts'],
     include: [
       'apps/cli/tests/**/*.expected.e2e.ts',
     ],

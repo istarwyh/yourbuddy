@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+## [0.3.4-rc.2] - 2026-10-17
+
+- Admit the two verified DSH 0.2.1 prereleases with `0.2.1-rc.1 || 0.2.1-rc.2` for the three experimental peers and matching Native/compaction runtime guards; retain coherent-graph and exact pi-ai checks.
+- Read runtime package identities through the Host resolver before inspecting package metadata; avoid false Native/compaction refusal after a real pnpm profile installation.
+- Cover real installation admission, unknown prerelease/stable refusal, mixed supported graphs, and the Web Config contract used by rc.2.
+
+## [0.3.4-rc.1] - 2026-10-17
+
+- Target the coherent DSH `0.2.1-rc.1` graph with Cordis `4.0.5`, Schemastery `3.18.5`, and pi-ai `1.1.0`; keep exact experimental Native/compaction gates and the npm `rc` channel.
+- Remove the retired `dsh-invariants` dependency and `./invariant` companion export. Adapt account routes to the owner-authenticated browser Peer, and update Settings/stock tool-view contracts.
+- Preserve the static Codex catalog without credential reads or refreshes, including live per-profile exclusions; actual model requests still require Login State.
+- Stop Image eligibility refreshes after row disposal, including an initial Login State read that settles after unload; cover the real plugin-fiber lifecycle without swallowing errors.
+- Use Portable checkpoints for tool-search/deferred-tool history and in-history system/developer updates whose semantics are not represented in the existing Native digest. Keep V4 sessions and codec v1 unchanged.
+- Add frozen rc.4 admission evidence, genuine synthetic rc.2 session restore/fork/replay coverage, and source checks carrying the exact Desktop pi-ai runtime patch. Live OAuth, private backend requests and an installed Desktop are separate verification steps.
+
 ## [0.3.3-rc.4] - 2026-10-14
 
 - Add optional per-profile `excludedModelIds`, defaulting to an empty list, with exact case-sensitive filtering after model completion and long-context policy. Preserve remaining provider descriptors, parameters, order, and source objects; no model is excluded by default.
@@ -171,7 +188,8 @@
 
 - DSH `0.1.0-rc.6` does not expose a policy-aware binary workspace-write API, so generated images remain durable conversation attachments and workspace export is not offered.
 
-[Unreleased]: https://github.com/suntianc/dsh-codex-auth/compare/v0.3.3-alpha.5...HEAD
+[Unreleased]: https://github.com/suntianc/dsh-codex-auth/compare/v0.3.4-rc.2...HEAD
+[0.3.4-rc.2]: https://github.com/suntianc/dsh-codex-auth/compare/v0.3.4-rc.1...v0.3.4-rc.2
 [0.3.3-alpha.5]: https://github.com/suntianc/dsh-codex-auth/compare/v0.3.2...v0.3.3-alpha.5
 [0.3.2]: https://github.com/suntianc/dsh-codex-auth/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/suntianc/dsh-codex-auth/compare/v0.3.0...v0.3.1

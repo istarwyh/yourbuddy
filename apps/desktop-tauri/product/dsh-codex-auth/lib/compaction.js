@@ -1,5 +1,5 @@
-import { _ as installedPackageVersion, g as isSupportedDshGraph, h as SUPPORTED_DSH_RUNTIMES } from "./native-checkpoint-DaSMABQ8.js";
-import { t as codexNativeCompactionCoordinator } from "./native-compaction-BQK_oyBc.js";
+import { _ as isSupportedDshGraph, g as SUPPORTED_DSH_RUNTIMES, h as SUPPORTED_DSH_PEER_RANGE, v as installedPackageVersion } from "./native-checkpoint-Def4ztmG.js";
+import { t as codexNativeCompactionCoordinator } from "./native-compaction-DZ93jvg7.js";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import { BasicCompactionEngine } from "@deepseek-ai/dsh-compaction-basic";
 //#region src/compaction.ts
@@ -14,16 +14,16 @@ const DSH_RUNTIME_PACKAGES = [
 ];
 /** Conservative allowance for Basic's private framing around returned summary blocks. */
 const BASIC_FRAME_TOKEN_RESERVE = 256;
-/** Exact runtime pair verified against both npm and the matching source artifacts. */
+/** Verified coherent DSH graphs sharing the observed pi-ai conversion contract. */
 const CODEX_COMPACTION_COMPATIBILITY = Object.freeze({
-	dsh: "0.2.0-rc.2",
-	piAi: "0.87.1"
+	dsh: SUPPORTED_DSH_PEER_RANGE,
+	piAi: "1.1.0"
 });
 /** Read the installed versions that own the Basic transaction and pi conversion. */
 function installedRuntimeVersions() {
 	return {
-		dsh: Object.fromEntries(DSH_RUNTIME_PACKAGES.map((specifier) => [specifier, installedPackageVersion(specifier, import.meta.url)])),
-		piAi: installedPackageVersion("@earendil-works/pi-ai", import.meta.url)
+		dsh: Object.fromEntries(DSH_RUNTIME_PACKAGES.map((specifier) => [specifier, installedPackageVersion(specifier)])),
+		piAi: installedPackageVersion("@earendil-works/pi-ai")
 	};
 }
 /**
