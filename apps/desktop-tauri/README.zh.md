@@ -79,7 +79,7 @@ Tag CI、普通 `prepare:dist` 与 `build` 命令都不会修改或重新解析�
 
 每个桌面发布 Tag 及其已有 Tag 重试的 macOS 流水线还负责在组件打包前验收所有默认 Client 以及安装 Harbor 后新增的 Client。它从准备好的 Store 归档安装精确冻结的依赖，缓存命中时也执行安装，并提供生产 Rust Overlay，不刷新上游输入。验收器来自可信的工作流提交，临时放在 Tag 中的脚本辅助模块旁运行以保持相对导入语义，无论成功失败都会移除；产品源代码和发布 Tag 保持不变。文件检查从默认中间工作台打开合成的 PDF、DOCX、PPTX 和 XLSX 文件，要求已有 DSH 查看器显示两页文档或两个工作表，且不替换 Files 文件树。每种格式都关闭后重新打开，并保留由核心接管的 `.fods` 文本回退和 Better Sidebar `.txt` Editor 检查。验收器与二进制 Fixture 来自可信的工作流提交；Fixture 单独暂存，不改动 Tag 中的产品源代码。全部文件检查成功后，通过界面恢复侧栏原先的折叠状态，再让桌面 iframe 打开同一 Session；内容检查失败时保留现场供诊断。验证成功后会清理临时工作区依赖与展开的 Store，随后打包继续使用原始归档；组件归档排除的 Python 字节码也会在计算组件 ID 前移除。独立的七天证据制品保留源代码与工作流提交、Chromium 视频、最近一次捕获的工作台截图、早期失败截图、脱敏页面错误与侧栏请求路径及状态（不含请求头、查询参数或正文）、组件 Manifest、归档大小，以及已完成的更新器校验和。Chromium 检查覆盖真实 Host 与 Profile；桌面命令桩仍然只是桥接证据。原生 WebView 控件和实测网络流量需要各自的验收观察。
 
-只读的 `Released managed Node acceptance` 工作流在临时 macOS runner 上运行公开的 0.4.17 Offline 应用。其 `--managed-node` smoke 模式从子进程 PATH 移除宿主 Node，使用私有 HOME，并在任何绝对路径或 HOME 下的 Node 探测候选仍存在时拒绝继续，不修改已安装工具。验收要求签名受管 Node 激活、可安全加入 PATH 的运行时路径、固定的 Node/pnpm 版本、通过认证的原生工作台 readiness，以及随后两次冷启动。这与允许使用 runner Node 的发布 smoke 分开；不覆盖旧布局迁移、已安装版本升级、真实模型或 Design 导出。工作流在失败时保留验收/发布身份及已经产生的原生证据；预检和下载失败记录在步骤日志中。它绝不发布版本。
+只读的 `Released managed Node acceptance` 工作流在临时 macOS runner 上运行公开的 0.4.17 Offline 应用。它将该冻结公开应用绑定到兼容的不可变原生验收器，并将 Checkout 的 `acceptanceSourceSha` 与 `nativeVerifierSourceSha` 分别记录；这不是 rc.5 导航验收。其 `--managed-node` smoke 模式从子进程 PATH 移除宿主 Node，使用私有 HOME，并在任何绝对路径或 HOME 下的 Node 探测候选仍存在时拒绝继续，不修改已安装工具。验收要求签名受管 Node 激活、可安全加入 PATH 的运行时路径、固定的 Node/pnpm 版本、通过认证的原生工作台 readiness，以及随后两次冷启动。这与允许使用 runner Node 的发布 smoke 分开；不覆盖旧布局迁移、已安装版本升级、真实模型或 Design 导出。工作流在失败时保留验收/发布身份及已经产生的原生证据；预检和下载失败记录在步骤日志中。它绝不发布版本。
 
 ## 组件契约
 
