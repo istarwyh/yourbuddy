@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { inspectManagedNode, inspectManagedPnpm, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, nativeSettingsMenuVisible, nativeSettingsDialogVisible, nativeSettingsDialogClosed, settingsNavigationScript, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
+import { inspectManagedNode, inspectManagedPnpm, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, nativeSettingsMenuVisible, nativeSettingsDialogVisible, nativeSettingsDialogClosed, settingsNavigationScript, observeSettingsNavigation, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
 
 const manifest = { appVersion: '0.4.9', releaseTag: 'yourbuddy-v0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
 const active = { appVersion: '0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
@@ -257,8 +257,88 @@ test('native Settings navigation presses exact scoped controls and inspects an a
   assert.match(settingsNavigationScript(123, 'account'), /labelText is "Account menu" or labelText is "账号菜单"/)
   assert.match(settingsNavigationScript(123, 'settings'), /scopeRole is "AXMenu"/)
   assert.match(settingsNavigationScript(123, 'settings'), /roleText is "AXMenuItem" and \(labelText is "Settings" or labelText is "设置"\)/)
-  assert.match(settingsNavigationScript(123, 'close'), /scopeRole is "AXGroup" and \(name of scopeNode is "Settings" or name of scopeNode is "设置"\)/)
+  assert.match(settingsNavigationScript(123, 'close'), /scopeRole is "AXGroup" then\s+set scopeName to name of scopeNode as text\s+if scopeName is "Settings" or scopeName is "设置"/)
+  for (const action of ['dialog', 'close']) {
+    const script = settingsNavigationScript(123, action)
+    assert.equal((script.match(/name of scopeNode/g) || []).length, 1)
+    assert.doesNotMatch(script, /name of item 1 of scopes/)
+    for (const stage of ['window-enumeration', 'scope-search', 'scoped-descendants', 'control-scan']) {
+      assert(script.includes(`AX_STAGE:${stage}:begin`))
+      assert(script.includes(`AX_STAGE:${stage}:end`))
+    }
+    for (const line of script.split('\n').filter(line => line.trim().startsWith('log '))) {
+      assert.doesNotMatch(line, /scopeName|labelText|report|valueText/)
+    }
+  }
   assert.match(settingsNavigationScript(123, 'close'), /roleText is "AXButton" and \(labelText is "Close" or labelText is "关闭"\)/)
+})
+
+test('navigation observations retain successful stderr stages before returning trimmed stdout', t => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-navigation-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const evidence = join(root, 'boot-1-navigation-observations.jsonl')
+  let calls = 0
+  const value = observeSettingsNavigation(123, 'account', evidence, (command, args, options) => {
+    calls++
+    assert.equal(command, '/usr/bin/osascript')
+    assert.equal(args[0], '-e')
+    assert(args[1].includes('AX_STAGE:window-enumeration:begin'))
+    assert.equal(options.timeout, 15_000)
+    assert.equal(options.encoding, 'utf8')
+    const stdout = '  pressed-account\n'
+    const stderr = 'AX_STAGE:control-scan:end count=3 skipped=0\nhttps://example.invalid/?token=secret'
+    return { pid: 123, output: [null, stdout, stderr], stdout, stderr, status: 0, signal: null }
+  })
+  assert.equal(calls, 1)
+  assert.equal(value, 'pressed-account')
+  const rows = readFileSync(evidence, 'utf8').trim().split('\n').map(line => JSON.parse(line))
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].action, 'account')
+  assert.equal(rows[0].status, 0)
+  assert.equal(rows[0].signal, null)
+  assert.equal(rows[0].errorCode, null)
+  assert.equal(rows[0].stdout, '  pressed-account\n')
+  assert.match(rows[0].stderr, /AX_STAGE:control-scan:end/)
+  assert(!rows[0].stderr.includes('secret'))
+  assert(Number.isFinite(Date.parse(rows[0].startedAt)))
+  assert(rows[0].elapsedMs >= 0)
+})
+
+test('navigation rejects timeouts, spawn errors, signals and failed exits after appending their observations', t => {
+  const root = mkdtempSync(join(tmpdir(), 'yourbuddy-navigation-failure-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const evidence = join(root, 'boot-2-navigation-observations.jsonl')
+  const failures = [
+    { error: Object.assign(new Error('timed out'), { code: 'ETIMEDOUT' }), status: 0, signal: null },
+    { error: Object.assign(new Error('missing executable'), { code: 'ENOENT' }), status: null, signal: null },
+    { status: 0, signal: 'SIGTERM' },
+    { status: 1, signal: null },
+  ]
+  let calls = 0
+  for (const failure of failures) {
+    assert.throws(() => observeSettingsNavigation(123, 'dialog', evidence, (_command, _args, options) => {
+      calls++
+      assert.equal(options.timeout, 15_000)
+      const stdout = 'AXGroup\tSettings\t\nAXButton\tGeneral\t\nAXButton\tClose\t\nAX_SKIPPED_NODES=0'
+      const stderr = 'AX_STAGE:scope-search:begin\ndsh-auth=secret'
+      return { pid: 123, output: [null, stdout, stderr], stdout, stderr, ...failure }
+    }), error => failure.error ? error === failure.error : error.code === 'ERR_ASSERTION')
+  }
+  assert.equal(calls, failures.length, 'each invocation owns one subprocess, with no action retry')
+  const rows = readFileSync(evidence, 'utf8').trim().split('\n').map(line => JSON.parse(line))
+  assert.equal(rows.length, failures.length)
+  assert.equal(rows[0].errorCode, 'ETIMEDOUT')
+  assert.equal(rows[0].status, 0, 'timeout and exit status are independent evidence')
+  assert.equal(rows[0].signal, null, 'a timeout rejects even without a signal or failing exit status')
+  assert.equal(rows[1].errorCode, 'ENOENT')
+  assert.equal(rows[2].signal, 'SIGTERM')
+  assert.equal(rows[3].status, 1)
+  for (const row of rows) {
+    assert.equal(row.action, 'dialog')
+    assert.match(row.stderr, /AX_STAGE:scope-search:begin/)
+    assert(!row.stderr.includes('secret'))
+    assert.match(row.stdout, /AX_SKIPPED_NODES=0/)
+  }
 })
 
 test('native polling reports the latest unmet observation instead of a recovered AX error', async () => {
