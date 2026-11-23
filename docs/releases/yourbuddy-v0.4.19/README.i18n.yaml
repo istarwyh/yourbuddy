@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.19/README.md
 /yourbuddy-0-4-19:
-  en: 8069ff2fc2306389
-  zh: edd7c88817f48ad7
+  en: 87284b0045881a57
+  zh: 62469775e9736e44
 /yourbuddy-0-4-19/user-release-notes:
   en: c38ee8d593c0bea2
   zh: ba9758a78bdf26a6
@@ -18,8 +18,8 @@
   en: 5b59c9fb294d5fbe
   zh: 23ba8d8842353059
 /yourbuddy-0-4-19/verification-summary:
-  en: bee6fe322efa14e9
-  zh: e973ea7d97f0937a
+  en: 1cc44aec2a7c6f90
+  zh: 51c8aa46bb69fe27
 /yourbuddy-0-4-19/scenario-final-linux-source-and-browser-consumers:
   en: 4dad971f74342e7c
   zh: 9d0737bd1028c929
@@ -39,14 +39,17 @@
   en: 056a922d975020e1
   zh: 517da574ea584986
 /yourbuddy-0-4-19/scenario-failed-native-release-attempt-1:
-  en: e5d454177ba3beeb
-  zh: bc5d35e07832638d
+  en: edc38ccd0fc5309e
+  zh: ceed45b172c59b04
+/yourbuddy-0-4-19/scenario-failed-native-release-attempt-2:
+  en: a5f086162fdcd728
+  zh: 0af57f63dbef40df
 /yourbuddy-0-4-19/scenario-public-tagged-source-zip:
   en: 84af5c334cc913f4
   zh: 655ebc4e4cd7bd4b
 /yourbuddy-0-4-19/delivery-status:
-  en: 1897753c87c3dab1
-  zh: 975144a00b501b84
+  en: 13d3dc7e1751950a
+  zh: 9b4742372b0e1ff3
 /yourbuddy-0-4-19/delivery-checklist:
   en: e15022d45d4568f2
   zh: 3a018d87a35405af

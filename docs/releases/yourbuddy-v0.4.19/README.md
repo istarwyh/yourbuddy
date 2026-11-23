@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 - Release identifier: `yourbuddy-v0.4.19`, published immutable source tag; GitHub product Release remains absent in the recorded check. Annotated tag object `4ca00c5cd12ebab2543a99249b478842b427e793` peels to `a85a40554ab6f3a5d601023c42153e3c0086770b`.
 - Channel: YourBuddy desktop, macOS Apple Silicon.
-- Archive state: partial; source archive verified, first formal native attempt failed, installer publication remains blocked.
+- Archive state: partial; source archive verified, both formal native attempts failed, installer publication remains blocked.
 - Current source: [C34](https://github.com/istarwyh/yourbuddy/commit/c34e3a33e03035971e79ebfa400eb856f8f5a178). PR CI tested synthetic merge `7a6be965dd5389b5011c2071c0bd2694ee932993` of that head into `d7dec019c4e4c72fbac902ceaab9b8bf3ab9acb3`. These are source CI identities, not the tagged version commit a85.
 - Evidence gallery: [task settings before](screenshots/tasks-before-on.png), [reopened settings](screenshots/tasks-reopened-off.png), [marketplace entry](screenshots/included-marketplace-entry.png), [configuration](screenshots/marketplace-configuration.png).
 - Download: [tag source ZIP](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.19.zip) downloaded and extracted with ditto; [tag archive](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.19/docs/releases/yourbuddy-v0.4.19) retains frozen prepublication notes. Later observations below are a separate evidence update, not a tag change.
@@ -40,6 +40,7 @@ Minimum macOS is **13.5 on Apple Silicon**, required by the Node binary. macOS 1
 | Recorded task choices and Marketplace entry | passed within Web UI scope | Direct C34 production Host with Rust overlay | [UI record](evidence/gui-evidence.json) |
 | Node floor and installer fixture history | bounded metadata/fixture evidence only | External binary and earlier local source | Below |
 | Native release attempt 1 | failed; stale verifier assertion diagnosed | Tagged a85 Offline application | [Native attempt](evidence/native-attempt-1.txt) |
+| Native release attempt 2 | failed; dialog observation timed out, cause unresolved | Same a85 product; trusted merged c2f verifier | [Second attempt](evidence/native-attempt-2.txt) |
 | Public source ZIP | passed with ditto; UnZip failures retained | Immutable tagged a85 source | [ZIP evidence](evidence/source-zip.txt) |
 | Public installers/updater and website guidance | blocked / pending | No GitHub product Release | Below |
 
@@ -140,7 +141,24 @@ Expected: recognize the authenticated workbench, exercise Settings and complete 
 
 Evidence: [failed run 45060471500](https://github.com/istarwyh/yourbuddy/actions/runs/45060471500) and [sanitized attempt record](evidence/native-attempt-1.txt). Intermediate recoverable AX errors are not substituted for the final complete evidence. At 20:01:27 UTC the release-by-tag API returned 404 while an independent repository lookup succeeded.
 
-Recovery/limits: a strictly verifier-only fix may use a new existing-tag dispatch from trusted master against unchanged tagged product a85, preserving separate application/verifier identities and fresh Release-absence checks. No corrected-verifier test, dispatch or successful recovery is recorded here. Product changes require a new version; do not move this tag. Full Settings/native command authority and subsequent lifecycle/public checks remain unverified.
+Recovery/limits: the verifier-only correction reached merged master and the new existing-tag dispatch below preserved unchanged product a85 and separate application/verifier identities. This original run remains failed. Product changes require a new version; do not move this tag. Complete Settings/native command authority and subsequent lifecycle/public checks remain unverified.
+
+## Scenario: failed native release attempt 2
+
+- Status: failed at scoped Settings observation; publication was skipped.
+- Date/time: 2026-11-23 00:59:43–01:02:04 UTC (+00:00), native acceptance step.
+- Release/commit/build: immutable `yourbuddy-v0.4.19` product a85; trusted workflow/verifier `c2f39b75f8d2810f2fb296b959bf69a4735587ba`, after PRs #120/#121 merged through official stack 122. Newly built Offline app, not a public installer.
+- Environment/origin/data/services: GitHub Actions `macos-15` arm64, exact OS/image version unrecorded; this existing-tag run, isolated synthetic Profile, real local Host/native AX, no real model/account acceptance.
+
+1. Build the unchanged tagged product and pass prepared workbench/Harbor, components and both package builds. 2. Authenticate the native Host, open Account menu and press Settings. 3. Observe the named dialog before closing it and completing three cold boots.
+
+Expected: actionable General/Close controls and subsequent native lifecycle checks. Actual: Settings opened, but dialog inspection ended with `osascript ETIMEDOUT`. The last complete account-menu snapshot has 131 rows; no completed dialog assertion, Settings close, second/third boot or result exists. Relocation, updater/checksums and publication were skipped. A fresh authenticated release-by-tag request returned HTTP 404 at 01:17:29 UTC.
+
+Evidence: [run 45089007191](https://github.com/istarwyh/yourbuddy/actions/runs/45089007191), [sanitized record and verified artifact digest](evidence/native-attempt-2.txt), and the actual cropped failure capture below. Artifact 14782160008 contains ten inspected files. The capture was taken after observation failure: it shows an Accessibility Access prompt for `hosted-compute-agent`, not when that prompt appeared or whether it caused the timeout.
+
+![After the failed observation: real Settings behind the runner's Accessibility Access prompt](screenshots/native-attempt-2-permission-modal.png)
+
+Limits/recovery: the blocking AppleEvent and root cause remain unknown. Static query-stage diagnostics can locate a later failure; they do not establish recovery. The 15-second subprocess and shared 60-second observation budgets, existing-permission requirement, unique targets and unchanged product tag remain mandatory. Visible Settings and historical 0.4.17 passes do not establish complete 0.4.19 native acceptance.
 
 ## Scenario: public tagged source ZIP
 
@@ -157,9 +175,9 @@ Evidence: [sanitized source ZIP record](evidence/source-zip.txt). The tagged not
 
 ## Delivery status
 
-- Product publication: blocked by failed native acceptance in attempt 1. The source tag and verified source ZIP exist, but no 0.4.19 GitHub product Release, public installers or stable updater was observed; the whole workflow failed.
-- Verification archive: partial, with reviewed GUI media, C34 source evidence, failed native attempt and verified tagged source ZIP. Tagged notes remain frozen prepublication; later observations use this separate evidence update. Successful complete native acceptance and public installer/update verification remain outstanding.
-- Website synchronization: pending for changed guidance. The existing deployment remains on the earlier website revision (55b), last successful run [43875873457](https://github.com/istarwyh/yourbuddy/actions/runs/43875873457); updated guidance requires a future deployment and live bilingual verification, not a claim of current synchronization.
+- Product publication: blocked by both failed native attempts. The source tag and verified source ZIP exist; the release-by-tag API still returned 404 after attempt 2. Neither failed run published public installers or the stable updater.
+- Verification archive: partial, with reviewed GUI media, C34 source evidence, both failed native attempts and verified tagged source ZIP. Tagged notes remain frozen prepublication; later observations use separate evidence updates. Successful complete native acceptance and public installer/update verification remain outstanding.
+- Website synchronization: changed guidance is prepared in Draft PR #123, held until product publication and public-asset verification. Earlier recorded deployment [43875873457](https://github.com/istarwyh/yourbuddy/actions/runs/43875873457) is not evidence for this guidance. Actual follow-up deployment and live bilingual verification remain pending.
 - Unverified scope: skipped/expected-fail tests as counted; real DeepSeek/provider/account; complete native Settings/Runtime Authority/controls, two later cold starts and relocation; public installer assets/hashes/signatures/updater; actual old-version in-place upgrade/restart/conversation restoration; complete macOS 13.5/optional-tool matrix. Historical local proof remains historical. Other package publication channels are not applicable.
 
 ## Delivery checklist

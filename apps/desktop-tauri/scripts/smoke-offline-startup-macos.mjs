@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -216,23 +216,37 @@ export function settingsNavigationScript(pid, action) {
   const label = action === 'account' ? '(labelText is "Account menu" or labelText is "账号菜单")' : action === 'settings' ? '(labelText is "Settings" or labelText is "设置")' : '(labelText is "Close" or labelText is "关闭")'
   return `tell application "System Events"
     set targetProcess to first application process whose unix id is ${pid}
+    log "AX_STAGE:window-enumeration:begin"
     set allNodes to entire contents of window 1 of targetProcess
+    log ("AX_STAGE:window-enumeration:end count=" & (count of allNodes))
     ${action === 'account' ? '' : `set scopes to {}
+    ${dialog ? 'set matchedScopeName to ""' : ''}
+    log "AX_STAGE:scope-search:begin"
     repeat with scopeNode in allNodes
       set readingScopeRole to true
       try
         set scopeRole to role of scopeNode as text
         set readingScopeRole to false
-        if ${dialog ? 'scopeRole is "AXGroup" and (name of scopeNode is "Settings" or name of scopeNode is "设置")' : 'scopeRole is "AXMenu"'} then set end of scopes to contents of scopeNode
+        ${dialog ? `if scopeRole is "AXGroup" then
+          set scopeName to name of scopeNode as text
+          if scopeName is "Settings" or scopeName is "设置" then
+            set end of scopes to contents of scopeNode
+            set matchedScopeName to scopeName
+          end if
+        end if` : 'if scopeRole is "AXMenu" then set end of scopes to contents of scopeNode'}
       on error errorText number errorNumber
         if errorNumber is not -1719 and errorNumber is not -1728 and not (readingScopeRole and errorNumber is -1700) then error errorText number errorNumber
       end try
     end repeat
+    log ("AX_STAGE:scope-search:end count=" & (count of scopes))
     if (count of scopes) is not 1 then error "Expected exactly one ${dialog ? 'named Settings dialog' : 'opened account menu'}"
-    set allNodes to entire contents of item 1 of scopes`}
+    log "AX_STAGE:scoped-descendants:begin"
+    set allNodes to entire contents of item 1 of scopes
+    log ("AX_STAGE:scoped-descendants:end count=" & (count of allNodes))`}
     set matchingButtons to {}
-    set report to ${action === 'dialog' ? '"AXGroup" & tab & (name of item 1 of scopes as text) & tab & linefeed' : '""'}
+    set report to ${action === 'dialog' ? '"AXGroup" & tab & matchedScopeName & tab & linefeed' : '""'}
     set skippedNodes to 0
+    log "AX_STAGE:control-scan:begin"
     repeat with itemNode in allNodes
       set readingRole to true
       try
@@ -248,10 +262,42 @@ export function settingsNavigationScript(pid, action) {
         end if
       end try
     end repeat
+    log ("AX_STAGE:control-scan:end count=" & (count of allNodes) & " skipped=" & skippedNodes)
     ${action === 'dialog' ? 'return report & "AX_SKIPPED_NODES=" & skippedNodes' : `if (count of matchingButtons) is not 1 then error "Expected exactly one ${action} control in its native scope"
+    log "AX_STAGE:press:begin"
     perform action "AXPress" of item 1 of matchingButtons
+    log "AX_STAGE:press:end"
     return "pressed-${action}"`}
   end tell`
+}
+
+/**
+ * Run one owned navigation observation, retaining subprocess diagnostics before any failure.
+ * @param {number} pid Owned application process id.
+ * @param {'account'|'settings'|'dialog'|'close'} action Exact navigation step; only dialog is observational.
+ * @param {string} evidencePath Per-boot append-only JSONL path inside the owned evidence directory.
+ * @param {typeof spawnSync} [run] Synchronous subprocess adapter; defaults to the real bounded osascript invocation.
+ * @returns {string} Trimmed stdout after a successful, unsignalled completion.
+ * @throws {Error} A subprocess error, timeout, signal, nonzero status or evidence-write failure rejects the step.
+ */
+export function observeSettingsNavigation(pid, action, evidencePath, run = spawnSync) {
+  const script = settingsNavigationScript(pid, action)
+  const started = Date.now()
+  const result = run('/usr/bin/osascript', ['-e', script], { encoding: 'utf8', timeout: 15_000 })
+  appendFileSync(evidencePath, `${JSON.stringify({
+    action,
+    startedAt: new Date(started).toISOString(),
+    elapsedMs: Date.now() - started,
+    status: result.status,
+    signal: result.signal,
+    errorCode: result.error?.code ?? null,
+    stdout: redactEvidence(result.stdout ?? ''),
+    stderr: redactEvidence(result.stderr ?? ''),
+  })}\n`)
+  if (result.error) throw result.error
+  assert.equal(result.signal, null, `native ${action} navigation must not end by signal`)
+  assert.equal(result.status, 0, `native ${action} navigation failed: ${redactEvidence(result.stderr ?? '')}`)
+  return result.stdout.trim()
 }
 
 /** Press the exact Continue or Configure later control in its named AX subtree. */
@@ -602,20 +648,21 @@ export async function smokeOfflineStartup(executable, outputRoot, version, manag
           return nativeWorkbenchVisible(value) && value
         }, workbenchTimeLeft(), true)
         writeFileSync(join(evidence, `boot-${round}-accessibility.txt`), redactEvidence(view))
-        assert.equal(apple(settingsNavigationScript(child.pid, 'account')), 'pressed-account')
+        const navigationEvidence = join(evidence, `boot-${round}-navigation-observations.jsonl`)
+        assert.equal(observeSettingsNavigation(child.pid, 'account', navigationEvidence), 'pressed-account')
         const menu = await until('Settings item in the native Account menu', () => {
           const value = inspectWindow(child.pid, false, observeWindow)
           return nativeSettingsMenuVisible(value) && value
         }, workbenchTimeLeft(), true)
         writeFileSync(join(evidence, `boot-${round}-account-menu.txt`), redactEvidence(menu))
-        assert.equal(apple(settingsNavigationScript(child.pid, 'settings')), 'pressed-settings')
+        assert.equal(observeSettingsNavigation(child.pid, 'settings', navigationEvidence), 'pressed-settings')
         const dialog = await until('actionable native Settings dialog', () => {
-          const snapshot = parseWindowInspection(apple(settingsNavigationScript(child.pid, 'dialog')))
+          const snapshot = parseWindowInspection(observeSettingsNavigation(child.pid, 'dialog', navigationEvidence))
           observeWindow(snapshot)
           return nativeSettingsDialogVisible(snapshot.report) && snapshot.report
         }, workbenchTimeLeft(), true)
         writeFileSync(join(evidence, `boot-${round}-settings-dialog.txt`), redactEvidence(dialog))
-        assert.equal(apple(settingsNavigationScript(child.pid, 'close')), 'pressed-close')
+        assert.equal(observeSettingsNavigation(child.pid, 'close', navigationEvidence), 'pressed-close')
         await until('native Settings dialog closed', () => {
           const value = inspectWindow(child.pid, false, observeWindow)
           return nativeSettingsDialogClosed(value)

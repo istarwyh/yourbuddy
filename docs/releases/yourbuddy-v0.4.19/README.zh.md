@@ -4,7 +4,7 @@
 
 - 发布标识：`yourbuddy-v0.4.19`，已公开且不可变的源码标签；所记录检查中 GitHub 产品 Release 仍不存在。注解标签对象 `4ca00c5cd12ebab2543a99249b478842b427e793` 解引用至 `a85a40554ab6f3a5d601023c42153e3c0086770b`。
 - 渠道：YourBuddy 桌面应用，macOS Apple Silicon。
-- 归档状态：部分完成；源码归档已验证，首次正式原生验收失败，安装包发布仍受阻。
+- 归档状态：部分完成；源码归档已验证，两次正式原生验收均失败，安装包发布仍受阻。
 - 当前源码：[C34](https://github.com/istarwyh/yourbuddy/commit/c34e3a33e03035971e79ebfa400eb856f8f5a178)。PR CI 测试其合入 `d7dec019c4e4c72fbac902ceaab9b8bf3ab9acb3` 的合成提交 `7a6be965dd5389b5011c2071c0bd2694ee932993`。二者是源码 CI 身份，不是标签版本提交 a85。
 - 证据图集：[任务设置操作前](screenshots/tasks-before-on.png)、[重新打开设置](screenshots/tasks-reopened-off.png)、[市场入口](screenshots/included-marketplace-entry.png)、[配置界面](screenshots/marketplace-configuration.png)。
 - 下载：[标签源码 ZIP](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.19.zip)已下载并用 ditto 解压；[标签归档](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.19/docs/releases/yourbuddy-v0.4.19)保留冻结的发布前说明。下文后续观察属于独立证据更新，不修改标签。
@@ -40,6 +40,7 @@
 | 任务选项及插件市场入口录制 | Web UI 范围内 passed | 直接 C34 生产 Host 配合 Rust overlay | [UI 记录](evidence/gui-evidence.json) |
 | Node 系统下限及安装器夹具历史 | 仅有界元数据及夹具证据 | 外部二进制及较早本地源码 | 下文 |
 | 首次原生发布验收 | failed；已诊断过期 verifier 断言 | 标签 a85 Offline 应用 | [原生尝试](evidence/native-attempt-1.txt) |
+| 第二次原生发布验收 | failed；对话框观察超时，原因未定 | 相同 a85 产品；可信合并 c2f 验收器 | [第二次尝试](evidence/native-attempt-2.txt) |
 | 公开源码 ZIP | ditto passed；保留 UnZip 失败 | 不可变标签 a85 源码 | [ZIP 证据](evidence/source-zip.txt) |
 | 公开安装包、更新源及网站指引 | 受阻／待完成 | 无 GitHub 产品 Release | 下文 |
 
@@ -140,7 +141,24 @@ Node 元数据检查于 2026-11-22 21:44:33 UTC+08:00（Asia/Shanghai）通过�
 
 证据：[失败执行 45060471500](https://github.com/istarwyh/yourbuddy/actions/runs/45060471500)及[脱敏尝试记录](evidence/native-attempt-1.txt)。中间可恢复 AX 错误不代替最终完整证据。20:01:27 UTC，按标签查询 Release 的 API 返回 404，而独立仓库查询成功。
 
-恢复及限制：严格限于 verifier 的修复可从可信 master 发起新的 existing-tag dispatch，保留标签产品 a85 不变、应用和 verifier 身份分开、重新检查 Release 不存在。此处未记录修复 verifier 的测试、dispatch 或成功恢复。产品变更必须新版本，不移动本标签。完整设置及原生命令权限、后续生命周期和公开检查仍未验证。
+恢复及限制：仅修改验收器的修正已合入 master，下节新的 existing-tag dispatch 保留产品 a85 不变，应用和验收器身份分开。本次原执行仍为失败。产品变更必须新版本，不移动本标签。完整设置及原生命令权限、后续生命周期和公开检查仍未验证。
+
+## 场景：第二次原生发布验收失败
+
+- 状态：作用域内 Settings 观察失败；未执行发布。
+- 日期时间：2026-11-23 00:59:43–01:02:04 UTC（+00:00），原生验收步骤。
+- 发布、提交及构建：不可变 `yourbuddy-v0.4.19` 产品 a85；可信工作流及验收器为 `c2f39b75f8d2810f2fb296b959bf69a4735587ba`，PR #120/#121 已通过官方 stack 122 合并。新构建 Offline 应用，不是公开安装包。
+- 环境、来源、数据及服务：GitHub Actions `macos-15` arm64，未记录精确系统及镜像版本；本次 existing-tag 执行、隔离模拟 Profile、真实本地 Host 及原生 AX，不是真实模型或账户验收。
+
+1. 构建不变的标签产品，通过准备后工作台及 Harbor、组件及两种包构建。2. 认证原生 Host，打开账号菜单并按下设置。3. 观察具名对话框，再关闭它并完成三次冷启动。
+
+预期：获得可操作的 General 及 Close 控件并完成后续原生生命周期检查。实际：Settings 已打开，但对话框检查最终 `osascript ETIMEDOUT`。最后完整账号菜单快照有 131 行；无完整对话框断言、关闭设置、第二及第三次启动或结果。relocation、更新源、校验值及发布均跳过。01:17:29 UTC 再次认证请求按标签查询 Release，返回 HTTP 404。
+
+证据：[执行 45089007191](https://github.com/istarwyh/yourbuddy/actions/runs/45089007191)、[脱敏记录及已核对制品摘要](evidence/native-attempt-2.txt)，以及下方真实失败画面裁剪。制品 14782160008 的十个文件均已检查。画面在观察失败之后捕获：显示 `hosted-compute-agent` 的 Accessibility Access 提示，不能确定提示出现时间或是否导致超时。
+
+![观察失败之后：真实设置界面上方显示 runner 的辅助功能授权提示](screenshots/native-attempt-2-permission-modal.png)
+
+限制及恢复：阻塞的 AppleEvent 及根因仍未确定。静态查询阶段诊断可定位后续失败，不建立已恢复结论。15 秒子进程及共同 60 秒观察预算、既有权限要求、目标唯一性及产品标签不变均须保留。设置已显示和历史 0.4.17 通过不代表完整 0.4.19 原生验收。
 
 ## 场景：公开标签源码 ZIP
 
@@ -157,9 +175,9 @@ Node 元数据检查于 2026-11-22 21:44:33 UTC+08:00（Asia/Shanghai）通过�
 
 ## 交付状态
 
-- 产品发布：受首次原生验收失败阻塞。源码标签及已验证源码 ZIP 存在，但未观察到 0.4.19 GitHub 产品 Release、公开安装包或稳定更新源；整体工作流失败。
-- 验证归档：部分完成，包含已审查 GUI 媒体、C34 源码证据、失败原生尝试及已验证标签源码 ZIP。标签说明仍为冻结发布前版本；后续观察属于此次独立证据更新。完整原生验收成功及公开安装包和更新验证仍待完成。
-- 网站同步：变更指引仍待同步。现有部署仍为较早网站版本（55b），最近成功执行为 [43875873457](https://github.com/istarwyh/yourbuddy/actions/runs/43875873457)；更新指引需要后续部署及双语线上验证，不宣称当前已同步。
+- 产品发布：两次原生尝试均失败，发布受阻。源码标签及已验证源码 ZIP 存在；第二次失败之后，按标签查询 Release 的 API 仍为 404。两次失败执行均未发布公开安装包或稳定更新源。
+- 验证归档：部分完成，包含已审查 GUI 媒体、C34 源码证据、两次原生失败及已验证标签源码 ZIP。标签说明仍为冻结发布前版本；后续观察分别更新证据。完整原生验收成功及公开安装包和更新验证仍待完成。
+- 网站同步：变更指引已在 Draft PR #123 准备，等待产品发布及公开资产验证。较早记录的部署 [43875873457](https://github.com/istarwyh/yourbuddy/actions/runs/43875873457) 不证明此版指引已上线。后续实际部署及双语线上验证仍待完成。
 - 未验证范围：已计数的跳过及预期失败；真实 DeepSeek/服务商/账户；完整原生 Settings、Runtime Authority 及控件、后续两次冷启动及 relocation；公开安装包资产及哈希和签名及更新源；旧版真实原地升级、重启及会话恢复；完整 macOS 13.5 及可选工具矩阵。较早本地证据仍为历史。其他包发布渠道不适用。
 
 ## 交付清单
