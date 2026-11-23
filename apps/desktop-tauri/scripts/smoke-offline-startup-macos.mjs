@@ -60,6 +60,18 @@ export function inspectManagedNode(log, active, manifest, runtime, appData) {
   return node
 }
 
+/**
+ * Query seeded pnpm outside the source checkout's packageManager policy.
+ * @param {string} pnpm Absolute managed pnpm executable path.
+ * @param {string} world Owned workspace outside the checkout.
+ * @param {NodeJS.ProcessEnv} env Environment for the managed executable.
+ * @param {typeof execFileSync} [run] Bounded subprocess runner.
+ * @returns {string} Seeded pnpm version without surrounding whitespace.
+ */
+export function inspectManagedPnpm(pnpm, world, env, run = execFileSync) {
+  return run(pnpm, ['--version'], { cwd: world, env, encoding: 'utf8', timeout: PROCESS_TIMEOUT_MS }).trim()
+}
+
 /** Reject a different version or an incomplete native readiness sequence. */
 export function inspectBoot(log, active, manifest, version) {
   assert.equal(manifest.appVersion, version, 'signed channel must be the requested current version')
@@ -96,7 +108,7 @@ export function requireAccessibility() {
     'BLOCKED: runner has no existing Accessibility permission; this test never grants it')
 }
 
-/** Fresh AX references may disappear while WebKit replaces a subtree. */
+/** Fresh AX references can disappear or fail role coercion while WebKit replaces a subtree. */
 export function windowInspectionScript(pid, close = false) {
   assert(Number.isSafeInteger(pid) && pid > 0)
   return `tell application "System Events"
@@ -105,8 +117,10 @@ export function windowInspectionScript(pid, close = false) {
     set report to ""
     set skippedNodes to 0
     repeat with itemNode in allNodes
+      set readingRole to true
       try
         set roleText to role of itemNode as text
+        set readingRole to false
         set labelText to ""
         set valueText to ""
         try
@@ -121,7 +135,7 @@ export function windowInspectionScript(pid, close = false) {
           return "pressed" & linefeed & "AX_SKIPPED_NODES=" & skippedNodes
         end if` : ''}
       on error errorText number errorNumber
-        if errorNumber is -1719 or errorNumber is -1728 then
+        if errorNumber is -1719 or errorNumber is -1728 or (readingRole and errorNumber is -1700) then
           set skippedNodes to skippedNodes + 1
         else
           error ("AX partial snapshot:" & linefeed & report & "AX_SKIPPED_NODES=" & skippedNodes & linefeed & errorText) number errorNumber
@@ -157,7 +171,87 @@ export function previewNoticeVisible(report, configureLater = false) {
 /** Require both exact workbench controls, including WebKit's native popup-button role. */
 export function nativeWorkbenchVisible(report) {
   return /^AX(?:Button|PopUpButton)\tCodex\t/m.test(report)
-    && /^AX(?:Button|PopUpButton)\t(?:Settings|设置)\t/m.test(report)
+    && /^AX(?:Button|PopUpButton)\t(?:Account menu|账号菜单)\t/m.test(report)
+}
+
+/**
+ * Require the Settings item in the opened native account menu.
+ * @param {string} report Native window AX role/name/value rows.
+ * @returns {boolean} Whether the opened menu exposes the exact Settings action.
+ */
+export function nativeSettingsMenuVisible(report) {
+  return /^AXMenu\t/m.test(report) && /^AXMenuItem\t(?:Settings|设置)\t/m.test(report)
+}
+
+/**
+ * Require actionable navigation and close controls in the named Settings dialog.
+ * @param {string} report AX rows scoped to the named Settings dialog.
+ * @returns {boolean} Whether the dialog exposes its General and Close actions.
+ */
+export function nativeSettingsDialogVisible(report) {
+  return /^AXGroup\t(?:Settings|设置)\t/m.test(report)
+    && /^AXButton\t(?:General|通用设置)\t/m.test(report)
+    && /^AXButton\t(?:Close|关闭)\t/m.test(report)
+}
+
+/**
+ * Require the workbench controls and absence of the named Settings dialog.
+ * @param {string} report Native window AX role/name/value rows.
+ * @returns {boolean} Whether Settings is absent and the workbench is available.
+ */
+export function nativeSettingsDialogClosed(report) {
+  return nativeWorkbenchVisible(report) && !/^AXGroup\t(?:Settings|设置)\t/m.test(report)
+}
+
+/**
+ * Inspect or press exact Settings navigation controls in the owned native window.
+ * @param {number} pid Application process id.
+ * @param {'account'|'settings'|'dialog'|'close'} action Native navigation step; dialog only reads AX state.
+ * @returns {string} AppleScript scoped to the owned window and the opened menu or named dialog.
+ */
+export function settingsNavigationScript(pid, action) {
+  assert(Number.isSafeInteger(pid) && pid > 0)
+  const dialog = action === 'dialog' || action === 'close'
+  const role = action === 'account' ? '(roleText is "AXButton" or roleText is "AXPopUpButton")' : action === 'settings' ? 'roleText is "AXMenuItem"' : 'roleText is "AXButton"'
+  const label = action === 'account' ? '(labelText is "Account menu" or labelText is "账号菜单")' : action === 'settings' ? '(labelText is "Settings" or labelText is "设置")' : '(labelText is "Close" or labelText is "关闭")'
+  return `tell application "System Events"
+    set targetProcess to first application process whose unix id is ${pid}
+    set allNodes to entire contents of window 1 of targetProcess
+    ${action === 'account' ? '' : `set scopes to {}
+    repeat with scopeNode in allNodes
+      set readingScopeRole to true
+      try
+        set scopeRole to role of scopeNode as text
+        set readingScopeRole to false
+        if ${dialog ? 'scopeRole is "AXGroup" and (name of scopeNode is "Settings" or name of scopeNode is "设置")' : 'scopeRole is "AXMenu"'} then set end of scopes to contents of scopeNode
+      on error errorText number errorNumber
+        if errorNumber is not -1719 and errorNumber is not -1728 and not (readingScopeRole and errorNumber is -1700) then error errorText number errorNumber
+      end try
+    end repeat
+    if (count of scopes) is not 1 then error "Expected exactly one ${dialog ? 'named Settings dialog' : 'opened account menu'}"
+    set allNodes to entire contents of item 1 of scopes`}
+    set matchingButtons to {}
+    set report to ${action === 'dialog' ? '"AXGroup" & tab & (name of item 1 of scopes as text) & tab & linefeed' : '""'}
+    set skippedNodes to 0
+    repeat with itemNode in allNodes
+      set readingRole to true
+      try
+        set roleText to role of itemNode as text
+        set readingRole to false
+        set labelText to name of itemNode as text
+        ${action === 'dialog' ? 'set report to report & roleText & tab & labelText & tab & linefeed' : `if ${role} and ${label} then set end of matchingButtons to contents of itemNode`}
+      on error errorText number errorNumber
+        if errorNumber is -1719 or errorNumber is -1728 or (readingRole and errorNumber is -1700) then
+          set skippedNodes to skippedNodes + 1
+        else
+          error errorText number errorNumber
+        end if
+      end try
+    end repeat
+    ${action === 'dialog' ? 'return report & "AX_SKIPPED_NODES=" & skippedNodes' : `if (count of matchingButtons) is not 1 then error "Expected exactly one ${action} control in its native scope"
+    perform action "AXPress" of item 1 of matchingButtons
+    return "pressed-${action}"`}
+  end tell`
 }
 
 /** Press the exact Continue or Configure later control in its named AX subtree. */
@@ -168,17 +262,27 @@ export function previewNoticeScript(pid, configureLater = false) {
     set allNodes to entire contents of window 1 of targetProcess
     set matchingButtons to {}
     repeat with itemNode in allNodes
+      set readingRole to true
       try
-        if role of itemNode is "AXGroup" and (name of itemNode is "${configureLater ? 'Add an API key to get started' : 'Preview Notice'}" or name of itemNode is "${configureLater ? '添加一个 API Key 开始使用' : '预览版说明'}") then
+        set groupRole to role of itemNode as text
+        set readingRole to false
+        if groupRole is "AXGroup" and (name of itemNode is "${configureLater ? 'Add an API key to get started' : 'Preview Notice'}" or name of itemNode is "${configureLater ? '添加一个 API Key 开始使用' : '预览版说明'}") then
           set noticeNodes to entire contents of itemNode
           repeat with noticeNode in noticeNodes
-            if role of noticeNode is "AXButton" and (name of noticeNode is "${configureLater ? 'Configure later' : 'Continue'}" or name of noticeNode is "${configureLater ? '稍后配置' : '继续'}") then
-              set end of matchingButtons to contents of noticeNode
-            end if
+            set readingButtonRole to true
+            try
+              set buttonRole to role of noticeNode as text
+              set readingButtonRole to false
+              if buttonRole is "AXButton" and (name of noticeNode is "${configureLater ? 'Configure later' : 'Continue'}" or name of noticeNode is "${configureLater ? '稍后配置' : '继续'}") then
+                set end of matchingButtons to contents of noticeNode
+              end if
+            on error errorText number errorNumber
+              if errorNumber is not -1719 and errorNumber is not -1728 and not (readingButtonRole and errorNumber is -1700) then error errorText number errorNumber
+            end try
           end repeat
         end if
       on error errorText number errorNumber
-        if errorNumber is not -1719 and errorNumber is not -1728 then error errorText number errorNumber
+        if errorNumber is not -1719 and errorNumber is not -1728 and not (readingRole and errorNumber is -1700) then error errorText number errorNumber
       end try
     end repeat
     if (count of matchingButtons) is not 1 then error "Expected exactly one allowed button inside the named first-run dialog"
@@ -466,7 +570,7 @@ export async function smokeOfflineStartup(executable, outputRoot, version, manag
           assert.equal(nodeIdentity, 'darwin:arm64')
           const pnpm = join(appData, 'runtime', 'pnpm-global', 'bin', 'pnpm')
           const managedEnv = { ...env, PATH: `${dirname(node)}:${env.PATH}` }
-          const pnpmVersion = execFileSync(pnpm, ['--version'], { env: managedEnv, encoding: 'utf8', timeout: PROCESS_TIMEOUT_MS }).trim()
+          const pnpmVersion = inspectManagedPnpm(pnpm, world, managedEnv)
           assert.equal(pnpmVersion, runtime.pnpmVersion)
           nodeEvidence = { nodeVersion, nodeIdentity, pnpmVersion, nodeSha256: sha256(node), componentId: active.components.node.id }
           if (round === 1) {
@@ -477,6 +581,8 @@ export async function smokeOfflineStartup(executable, outputRoot, version, manag
         }
         assert(active.components.pnpmStore, 'empty isolated HOME must exercise the signed offline Store fallback')
         assert(!existsSync(join(appData, 'components', 'downloads')), 'Offline startup must not download release components')
+        const workbenchDeadline = Date.now() + 60_000
+        const workbenchTimeLeft = () => Math.max(0, workbenchDeadline - Date.now())
         let previewAcknowledged = false
         let credentialsDeferred = false
         const view = await until('authenticated workbench in the native WebView', () => {
@@ -494,8 +600,26 @@ export async function smokeOfflineStartup(executable, outputRoot, version, manag
             return false
           }
           return nativeWorkbenchVisible(value) && value
-        }, 60_000, true)
+        }, workbenchTimeLeft(), true)
         writeFileSync(join(evidence, `boot-${round}-accessibility.txt`), redactEvidence(view))
+        assert.equal(apple(settingsNavigationScript(child.pid, 'account')), 'pressed-account')
+        const menu = await until('Settings item in the native Account menu', () => {
+          const value = inspectWindow(child.pid, false, observeWindow)
+          return nativeSettingsMenuVisible(value) && value
+        }, workbenchTimeLeft(), true)
+        writeFileSync(join(evidence, `boot-${round}-account-menu.txt`), redactEvidence(menu))
+        assert.equal(apple(settingsNavigationScript(child.pid, 'settings')), 'pressed-settings')
+        const dialog = await until('actionable native Settings dialog', () => {
+          const snapshot = parseWindowInspection(apple(settingsNavigationScript(child.pid, 'dialog')))
+          observeWindow(snapshot)
+          return nativeSettingsDialogVisible(snapshot.report) && snapshot.report
+        }, workbenchTimeLeft(), true)
+        writeFileSync(join(evidence, `boot-${round}-settings-dialog.txt`), redactEvidence(dialog))
+        assert.equal(apple(settingsNavigationScript(child.pid, 'close')), 'pressed-close')
+        await until('native Settings dialog closed', () => {
+          const value = inspectWindow(child.pid, false, observeWindow)
+          return nativeSettingsDialogClosed(value)
+        }, workbenchTimeLeft(), true)
         assert.equal(inspectWindow(child.pid, true), 'pressed', 'close through the real native window command')
         await until('native close', () => child.exitCode !== null || child.signalCode !== null)
         const outcome = await ended

@@ -2,14 +2,14 @@
 
 English | [中文](README.zh.md)
 
-- Release identifier: planned `yourbuddy-v0.4.19`; no release tag or public product verified.
+- Release identifier: `yourbuddy-v0.4.19`, published immutable source tag; GitHub product Release remains absent in the recorded check. Annotated tag object `4ca00c5cd12ebab2543a99249b478842b427e793` peels to `a85a40554ab6f3a5d601023c42153e3c0086770b`.
 - Channel: YourBuddy desktop, macOS Apple Silicon.
-- Archive state: partial prepublication archive; formal product verification remains pending.
-- Current source: [C34](https://github.com/istarwyh/yourbuddy/commit/c34e3a33e03035971e79ebfa400eb856f8f5a178). PR CI tested synthetic merge `7a6be965dd5389b5011c2071c0bd2694ee932993` of that head into `d7dec019c4e4c72fbac902ceaab9b8bf3ab9acb3`. Neither is a future release commit.
+- Archive state: partial; source archive verified, first formal native attempt failed, installer publication remains blocked.
+- Current source: [C34](https://github.com/istarwyh/yourbuddy/commit/c34e3a33e03035971e79ebfa400eb856f8f5a178). PR CI tested synthetic merge `7a6be965dd5389b5011c2071c0bd2694ee932993` of that head into `d7dec019c4e4c72fbac902ceaab9b8bf3ab9acb3`. These are source CI identities, not the tagged version commit a85.
 - Evidence gallery: [task settings before](screenshots/tasks-before-on.png), [reopened settings](screenshots/tasks-reopened-off.png), [marketplace entry](screenshots/included-marketplace-entry.png), [configuration](screenshots/marketplace-configuration.png).
-- Download: planned [tag source ZIP](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.19.zip) and [tag archive](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.19/docs/releases/yourbuddy-v0.4.19), not published or extracted. Relative evidence below contains reviewed sanitized derivatives.
+- Download: [tag source ZIP](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.19.zip) downloaded and extracted with ditto; [tag archive](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.19/docs/releases/yourbuddy-v0.4.19) retains frozen prepublication notes. Later observations below are a separate evidence update, not a tag change.
 
-The prepared master is `0f46f5010548ec002575d2803a064c2330c2c11a` (PR #118 merged 2026-11-22 19:06:38 UTC), whose tree `1c93a2791807943a70d9576fd7ec8a9bf6d9ad9c` matches C34. Version preparation occurred afterward; no source CI result below is relabelled as a test of the future version-only tag commit.
+The prepared master is `0f46f5010548ec002575d2803a064c2330c2c11a` (PR #118 merged 2026-11-22 19:06:38 UTC), whose tree `1c93a2791807943a70d9576fd7ec8a9bf6d9ad9c` matches C34. Version preparation occurred afterward; no source CI result below is relabelled as a test of the tagged release commit.
 
 ## User release notes
 
@@ -39,13 +39,15 @@ Minimum macOS is **13.5 on Apple Silicon**, required by the Node binary. macOS 1
 | Clean fresh branded product build/install | passed per operator report | Direct clean C34 | [Build record](evidence/clean-product-build.txt) |
 | Recorded task choices and Marketplace entry | passed within Web UI scope | Direct C34 production Host with Rust overlay | [UI record](evidence/gui-evidence.json) |
 | Node floor and installer fixture history | bounded metadata/fixture evidence only | External binary and earlier local source | Below |
-| Formal release/native/public product/website | not verified | Future tagged candidate | Pending |
+| Native release attempt 1 | failed; stale verifier assertion diagnosed | Tagged a85 Offline application | [Native attempt](evidence/native-attempt-1.txt) |
+| Public source ZIP | passed with ditto; UnZip failures retained | Immutable tagged a85 source | [ZIP evidence](evidence/source-zip.txt) |
+| Public installers/updater and website guidance | blocked / pending | No GitHub product Release | Below |
 
 ## Scenario: final Linux source and browser consumers
 
 - Status: passed within the following counts; skips remain skips.
 - Date/time: 2026-11-22 UTC (+00:00); coverage job 17:09:35–18:22:07, artifacts job 17:09:13–18:39:19.
-- Release/commit: planned `yourbuddy-v0.4.19`; C34 source and synthetic merge identified above. Build: PR source and built browser artifacts, not published product.
+- Release/commit: `yourbuddy-v0.4.19`; C34 source and synthetic merge identified above. Build: PR source and built browser artifacts, not published product.
 - Environment: Ubuntu 26.04.1 LTS, image 20261116.202.1, Node 24.22.3, pnpm 11.28.5; Chromium 149.0.7827.55 and WebKit 26.5 for browser lane.
 - Origin/data/services: this final PR CI run; synthetic fixtures and controlled services; not live-provider acceptance.
 
@@ -59,7 +61,7 @@ Evidence: [run 45047783952](https://github.com/istarwyh/yourbuddy/actions/runs/4
 
 - Status: passed for observed source behavior, with expected failure/skips explicitly retained.
 - Date/time: 2026-11-22 17:08:56–18:21:37 UTC (+00:00); lifecycle case result at 18:04:08.742303 UTC.
-- Release/commit/build: planned `yourbuddy-v0.4.19`; same C34 synthetic merge; source suite, not a Windows or macOS installer.
+- Release/commit/build: `yourbuddy-v0.4.19`; same C34 synthetic merge; source suite, not a Windows or macOS installer.
 - Environment: Windows Server 2025, 10.0.26100 Datacenter, image 20261116.315.1; Node 24.22.3, pnpm 11.28.5.
 - Origin/data/services: current PR CI; isolated synthetic configuration/Profile fixtures and real lifecycle processes; not a real model/account or upgrade of the running GUI.
 
@@ -73,7 +75,7 @@ Evidence: [run 45047783929](https://github.com/istarwyh/yourbuddy/actions/runs/4
 
 - Status: passed within prepared-product scope.
 - Date/time: 2026-11-22 17:08:58–17:29:15 UTC (+00:00); default success 17:26:32.318283; installed phase success 17:28:32.458388.
-- Release/commit/build: planned `yourbuddy-v0.4.19`; same C34 synthetic merge; frozen prepared production install, not tagged DMG.
+- Release/commit/build: `yourbuddy-v0.4.19`; same C34 synthetic merge; frozen prepared production install, not tagged DMG.
 - Environment: macOS 15.8.2 (24H232), arm64 image 20261118.0550.1; Node 24.22.3, pnpm 11.28.5, Chromium 149.0.7827.55, CPython 3.12.14, Harbor CLI 0.21.0 and harbor-dsh-evolution 0.10.3.
 - Origin/data/services: current PR CI; synthetic workspace/isolated Profile; real local Host/Profile/Python; controlled native invoke bridge supplied by the verifier, not packaged Tauri authority or real provider.
 
@@ -87,7 +89,7 @@ Evidence: [run 45047784001](https://github.com/istarwyh/yourbuddy/actions/runs/4
 
 - Status: passed per owning operator report, with commands and post-build host metadata retained in the evidence record.
 - Date/time: 2026-11-22 18:41:10–18:41:53 UTC (+00:00).
-- Release/commit/build: planned `yourbuddy-v0.4.19`; direct C34 `c34e3a33e03035971e79ebfa400eb856f8f5a178`, clean before and after; local freshly built branded product, not synthetic merge or release artifact.
+- Release/commit/build: `yourbuddy-v0.4.19`; direct C34 `c34e3a33e03035971e79ebfa400eb856f8f5a178`, clean before and after; local freshly built branded product, not synthetic merge or release artifact.
 - Environment: macOS 15.6.1 (24G90), arm64, Node 24.22.3, pnpm 11.28.5; host metadata collected afterward at 18:51:51 UTC, not at build start. Origin: current-source main-agent job bash1430; data: build/frozen dependencies; model/service: no live model claim.
 
 1. Build branded production artifacts from the clean source. 2. Perform a fresh frozen production installation and confirm unchanged clean HEAD.
@@ -124,17 +126,47 @@ Node metadata inspection passed on 2026-11-22 21:44:33 UTC+08:00 (Asia/Shanghai)
 
 Historical local final installer fixtures reported 17/17 passing, including early system-floor refusal and synthetic accepted receipts in private environments/app targets. The bounded log lacks exact commit, clock time and host metadata; it is not a current C34 or real native installer pass. An earlier fixture execution selected the real installed helper and wrote seven installer-operation records and related files. Signature rejection occurred before component preparation, replacement or stopping the application; the operator separately observed the existing GUI had not restarted. The audit did not remove user files or establish that all user files were unchanged. The fixture repair isolated environment roots and every explicit app target. This sanitized incident summary preserves the failure and repair without raw JSON/private paths; original local records remain retained, not publicly attached.
 
+## Scenario: failed native release attempt 1
+
+- Status: failed; diagnosis does not retrospectively convert the run to passed.
+- Date/time: 2026-11-22 19:54:00.043116–19:56:20.412602 UTC (+00:00), native acceptance step; the release operator reported a 33m15s overall job duration.
+- Release/commit/build: `yourbuddy-v0.4.19`, immutable product `a85a40554ab6f3a5d601023c42153e3c0086770b`; newly built Offline app, not C34 source CI or a public installer.
+- Environment: GitHub Actions macOS arm64, aarch64-apple-darwin, Node 24.22.3; precise native runner OS version was not collected in this bounded evidence and is not borrowed from earlier CI.
+- Origin/data/services: first tagged release run; isolated synthetic native acceptance Profile; real local Host and native AX observations, no model/provider or user-account acceptance.
+
+1. Build the tagged prepared product, components, Bootstrap package/ceiling and Offline app. 2. Start native Offline acceptance, authenticate the real Host, acknowledge the actual Preview Notice and inspect the owned main window through AX.
+
+Expected: recognize the authenticated workbench, exercise Settings and complete the remaining cold-start/lifecycle checks before publication. Actual: Host authenticated readiness and boot completed; final screenshot/AX showed Account menu, Codex popup and composer, with Preview Notice absent. Thirteen complete AX samples reported zero skipped nodes. The verifier still required a direct root Settings control alongside Codex, although Settings now belongs inside Account menu. The step ended with condition unmet and exit 1. Native Settings navigation, two later cold starts and relocation were not completed. Prepared/component/Bootstrap-ceiling/Offline build success does not make the whole workflow green; asset staging, updater/checksums and publication remained blocked.
+
+Evidence: [failed run 45060471500](https://github.com/istarwyh/yourbuddy/actions/runs/45060471500) and [sanitized attempt record](evidence/native-attempt-1.txt). Intermediate recoverable AX errors are not substituted for the final complete evidence. At 20:01:27 UTC the release-by-tag API returned 404 while an independent repository lookup succeeded.
+
+Recovery/limits: a strictly verifier-only fix may use a new existing-tag dispatch from trusted master against unchanged tagged product a85, preserving separate application/verifier identities and fresh Release-absence checks. No corrected-verifier test, dispatch or successful recovery is recorded here. Product changes require a new version; do not move this tag. Full Settings/native command authority and subsequent lifecycle/public checks remain unverified.
+
+## Scenario: public tagged source ZIP
+
+- Status: passed for anonymous download, ditto extraction and inspected source archive; two Apple UnZip extraction failures retained.
+- Date/time: download 2026-11-22 19:24:55–19:25:08 UTC (+00:00); extraction/content review completed 19:29:21 UTC.
+- Release/commit/build: `yourbuddy-v0.4.19`, source `a85a40554ab6f3a5d601023c42153e3c0086770b`; public source ZIP, not an installed binary.
+- Environment: local macOS native ditto and Apple Info-ZIP UnZip 6.00; exact host OS version not present in the bounded record. Origin: this release's source-download review; data: public source/sanitized archive; services: anonymous GitHub HTTP, no model or executed product.
+
+1. Download the immutable source ZIP and record content type, size, hash and ZIP comment. 2. Fully extract with ditto, compare the 12 tagged archive files byte-for-byte, read both notes/pair/five evidence records and open all four PNGs. 3. Inspect extracted desktop/Tauri/Cargo version metadata.
+
+Expected: source archive identifies the tag and contains readable evidence. Actual: HTTP 200, application/zip, 95,823,429 bytes; SHA-256 `076be1776090e01d929985e71b216ec500ad8498e6e1ba93db69331fb66154fa`; ZIP comment a85; all 12 archive files matched. Both notes and four 1200×834 screenshots opened; version sources read 0.4.19 and Tauri minimum 13.5. Apple UnZip under inherited C and explicit UTF-8 locales both failed on a Chinese filename with exit 50 despite 336 GiB free; ditto fully extracted the identical ZIP. This is not universal extractor compatibility.
+
+Evidence: [sanitized source ZIP record](evidence/source-zip.txt). The tagged notes intentionally remain their frozen prepublication version, not these later observations. Limits: no extracted code/app executed; no installer, native authority, signature/updater, real provider, current-app upgrade or website acceptance. Later evidence is committed separately without moving the tag.
+
 ## Delivery status
 
-- Product publication: pending; PR #118 is merged, but final source CI green does not establish `yourbuddy-v0.4.19`, signed packaging, native installation or public publication.
-- Verification archive: partial prepublication archive with reviewed screenshots, public GIF attachment and sanitized relative evidence. The final evidence commit, release/native/public verification and extracted downloadable source archive remain outstanding.
-- Website synchronization: pending because the macOS prerequisite changes guidance. Record bilingual guidance, production-base checks, deployment commit/run and actual live URLs separately; no deployment or live check is claimed here.
-- Unverified scope: skipped/expected-fail tests as counted; real DeepSeek/provider/account; native packaged Runtime Authority/controls; final tag build, public assets/hashes/signatures/updater/source ZIP; actual old-version in-place upgrade/restart/conversation restoration; complete macOS 13.5/optional-tool matrix. Historical local proof remains historical. Other package publication channels are not applicable.
+- Product publication: blocked by failed native acceptance in attempt 1. The source tag and verified source ZIP exist, but no 0.4.19 GitHub product Release, public installers or stable updater was observed; the whole workflow failed.
+- Verification archive: partial, with reviewed GUI media, C34 source evidence, failed native attempt and verified tagged source ZIP. Tagged notes remain frozen prepublication; later observations use this separate evidence update. Successful complete native acceptance and public installer/update verification remain outstanding.
+- Website synchronization: pending for changed guidance. The existing deployment remains on the earlier website revision (55b), last successful run [43875873457](https://github.com/istarwyh/yourbuddy/actions/runs/43875873457); updated guidance requires a future deployment and live bilingual verification, not a claim of current synchronization.
+- Unverified scope: skipped/expected-fail tests as counted; real DeepSeek/provider/account; complete native Settings/Runtime Authority/controls, two later cold starts and relocation; public installer assets/hashes/signatures/updater; actual old-version in-place upgrade/restart/conversation restoration; complete macOS 13.5/optional-tool matrix. Historical local proof remains historical. Other package publication channels are not applicable.
 
 ## Delivery checklist
 
 - [x] Attribute current C34 source, synthetic PR merge, test counts/skips and prepared bridge limits accurately.
 - [x] Keep historical floor/fixture incident separate and exclude private paths/operation JSON.
 - [ ] Confirm tagged bilingual archive/pair/index, reviewed relative evidence and final immutable evidence links.
-- [ ] Verify actual release/native/public assets and extracted archive, not just CI.
+- [x] Download and inspect the immutable source ZIP; retain extractor failures and ditto success.
+- [ ] Complete native recovery and verify public installers/updater independently, not just source CI.
 - [ ] Record website deployment/live checks and independent four-part delivery status without moving public tags or replacing installers.

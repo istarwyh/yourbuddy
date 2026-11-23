@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { inspectManagedNode, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
+import { inspectManagedNode, inspectManagedPnpm, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, nativeSettingsMenuVisible, nativeSettingsDialogVisible, nativeSettingsDialogClosed, settingsNavigationScript, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
 
 const manifest = { appVersion: '0.4.9', releaseTag: 'yourbuddy-v0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
 const active = { appVersion: '0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
@@ -110,16 +110,17 @@ test('an application PID recycled before its exit event cannot acquire foreign d
 test('AX inspection isolates vanished nodes while retaining controls and fatal errors', () => {
   const script = windowInspectionScript(123)
   assert.match(script, /try\s+set roleText to role of itemNode/)
-  assert.match(script, /if errorNumber is -1719 or errorNumber is -1728 then\s+set skippedNodes to skippedNodes \+ 1/)
+  assert.match(script, /if errorNumber is -1719 or errorNumber is -1728 or \(readingRole and errorNumber is -1700\) then\s+set skippedNodes to skippedNodes \+ 1/)
   assert.match(script, /else\s+error \("AX partial snapshot:/)
   assert.match(script, /number errorNumber/)
   assert.equal((script.match(/role of itemNode/g) || []).length, 1)
+  assert.match(script, /set readingRole to true\s+try\s+set roleText to role of itemNode as text\s+set readingRole to false/)
   assert(!script.includes('AXPress'))
   const closing = windowInspectionScript(123, true)
   assert.match(closing, /roleText is "AXButton" and \(labelText is "Close" or labelText is "关闭"\)/)
   assert.match(closing, /perform action "AXPress" of itemNode/)
   assert.throws(() => windowInspectionScript(-1))
-  const report = 'AXButton\tCodex\t\nAXButton\tSettings\t'
+  const report = 'AXButton\tCodex\t\nAXButton\tAccount menu\t'
   assert.deepEqual(parseWindowInspection(`${report}\nAX_SKIPPED_NODES=2`), { report, skippedNodes: 2 })
   const parsed = parseWindowInspection(`${report}\nAX_SKIPPED_NODES=2`).report
   assert(nativeWorkbenchVisible(parsed), 'empty final AX value must preserve the workbench predicate')
@@ -161,10 +162,10 @@ test('only the reviewed preview notice permits a scoped real Continue action', (
   assert(!previewNoticeVisible(notice.replace('AXHeading', 'AXStaticText')))
   const script = previewNoticeScript(123)
   assert.match(script, /whose unix id is 123/)
-  assert.match(script, /role of itemNode is "AXGroup" and \(name of itemNode is "Preview Notice"/)
+  assert.match(script, /groupRole is "AXGroup" and \(name of itemNode is "Preview Notice"/)
   assert.match(script, /set noticeNodes to entire contents of itemNode/)
   assert.match(script, /repeat with noticeNode in noticeNodes/)
-  assert.match(script, /role of noticeNode is "AXButton" and \(name of noticeNode is "Continue"/)
+  assert.match(script, /buttonRole is "AXButton" and \(name of noticeNode is "Continue"/)
   assert.match(script, /if \(count of matchingButtons\) is not 1 then error/)
   assert.match(script, /perform action "AXPress" of item 1 of matchingButtons/)
   assert.doesNotMatch(script, /Configure later|Save and continue|set value/)
@@ -192,24 +193,72 @@ test('credential onboarding can only defer configuration in its exact named moda
 })
 
 
-test('native readiness recognizes exact actionable Codex and Settings controls, not text or partial labels', () => {
-  // Run 65's complete native sample exposes both menu triggers as AXPopUpButton.
-  const observed = 'AXPopUpButton\tSettings\t\nAXPopUpButton\tCodex\t\n'
+test('native readiness recognizes the current actionable Codex and Account menu controls', () => {
+  // The 0.4.19 native cold-start artifact exposes these exact unopened-menu controls.
+  const observed = 'AXPopUpButton\tAccount menu\t\nAXPopUpButton\tCodex\t\n'
   assert(nativeWorkbenchVisible(observed))
   assert(nativeWorkbenchVisible(observed.replaceAll('AXPopUpButton', 'AXButton')))
-  assert(nativeWorkbenchVisible(observed.replace('Settings', '设置')))
+  assert(nativeWorkbenchVisible(observed.replace('Account menu', '账号菜单')))
   assert(nativeWorkbenchVisible(observed.replace('AXPopUpButton\tCodex', 'AXButton\tCodex')))
   for (const rejected of [
     observed.replaceAll('AXPopUpButton', 'AXStaticText'),
-    observed.replace('AXPopUpButton\tSettings', 'AXStaticText\tSettings'),
+    observed.replace('AXPopUpButton\tAccount menu', 'AXStaticText\tAccount menu'),
     observed.replace('AXPopUpButton\tCodex', 'AXHeading\tCodex'),
     'AXPopUpButton\tCodex\t\n',
-    'AXPopUpButton\tSettings\t\n',
+    'AXPopUpButton\tAccount menu\t\n',
     observed.replace('Codex', 'Codex status'),
-    observed.replace('Settings', 'Settings preview'),
-    'AXPopUpButton\tOther\tCodex\nAXPopUpButton\tOther\tSettings\n',
+    observed.replace('Account menu', 'Account menu preview'),
+    observed.replace('Account menu', 'Settings'),
+    'AXPopUpButton\tOther\tCodex\nAXPopUpButton\tOther\tAccount menu\n',
     'AXGroup\tPreview Notice\t\nAXButton\tContinue\t\n',
   ]) assert.equal(nativeWorkbenchVisible(rejected), false, rejected)
+})
+
+test('native Settings navigation presses exact scoped controls and inspects an actionable dialog', () => {
+  const menu = 'AXMenu\tmissing value\t\nAXMenuItem\tSettings\t\n'
+  const dialog = 'AXGroup\tSettings\t\nAXButton\tGeneral\t\nAXButton\tClose\t\n'
+  assert(nativeSettingsMenuVisible(menu))
+  assert(nativeSettingsMenuVisible(menu.replace('Settings', '设置')))
+  assert(!nativeSettingsMenuVisible(menu.replace('AXMenuItem', 'AXStaticText')))
+  assert(!nativeSettingsMenuVisible(menu.replace('AXMenu\tmissing value\t\n', '')))
+  assert(nativeSettingsDialogVisible(dialog))
+  assert(nativeSettingsDialogVisible(dialog.replace('Settings', '设置').replace('General', '通用设置').replace('Close', '关闭')))
+  assert(!nativeSettingsDialogVisible(dialog.replace('AXButton\tGeneral', 'AXStaticText\tGeneral')))
+  assert(!nativeSettingsDialogVisible(dialog.replace('Settings', 'Settings preview')))
+  assert(!nativeSettingsDialogVisible(dialog.replace('AXButton\tClose\t\n', '')))
+  const workbench = 'AXPopUpButton\tAccount menu\t\nAXPopUpButton\tCodex\t\n'
+  assert(nativeSettingsDialogClosed(workbench))
+  assert(!nativeSettingsDialogClosed('AXPopUpButton\tCodex\t\n'))
+  for (const title of ['Settings', '设置']) {
+    assert(!nativeSettingsDialogClosed(`${workbench}AXGroup\t${title}\t\n`), 'an incomplete dialog must not count as closed')
+  }
+  for (const action of ['account', 'settings', 'dialog', 'close']) {
+    const script = settingsNavigationScript(123, action)
+    assert.match(script, /set readingRole to true\s+try\s+set roleText to role of itemNode as text\s+set readingRole to false\s+set labelText to name of itemNode as text/)
+    assert.match(script, /if errorNumber is -1719 or errorNumber is -1728 or \(readingRole and errorNumber is -1700\) then\s+set skippedNodes to skippedNodes \+ 1\s+else\s+error errorText number errorNumber/)
+    assert.match(script, /unix id is 123/)
+    assert.match(script, /entire contents of window 1 of targetProcess/)
+    assert.match(script, /error errorText number errorNumber/)
+    assert.doesNotMatch(script, /keystroke|set value|do JavaScript/)
+    if (action === 'dialog') {
+      assert.match(script, /return report & "AX_SKIPPED_NODES="/)
+      assert(!script.includes('AXPress'))
+    } else {
+      assert.match(script, /if \(count of matchingButtons\) is not 1 then error/)
+      assert.match(script, /perform action "AXPress" of item 1 of matchingButtons/)
+    }
+    if (action !== 'account') {
+      assert.match(script, /set readingScopeRole to true\s+try\s+set scopeRole to role of scopeNode as text\s+set readingScopeRole to false\s+if scopeRole/)
+      assert.match(script, /if errorNumber is not -1719 and errorNumber is not -1728 and not \(readingScopeRole and errorNumber is -1700\) then error errorText number errorNumber/)
+      assert.match(script, /if \(count of scopes\) is not 1 then error/)
+      assert.match(script, /set allNodes to entire contents of item 1 of scopes/)
+    }
+  }
+  assert.match(settingsNavigationScript(123, 'account'), /labelText is "Account menu" or labelText is "账号菜单"/)
+  assert.match(settingsNavigationScript(123, 'settings'), /scopeRole is "AXMenu"/)
+  assert.match(settingsNavigationScript(123, 'settings'), /roleText is "AXMenuItem" and \(labelText is "Settings" or labelText is "设置"\)/)
+  assert.match(settingsNavigationScript(123, 'close'), /scopeRole is "AXGroup" and \(name of scopeNode is "Settings" or name of scopeNode is "设置"\)/)
+  assert.match(settingsNavigationScript(123, 'close'), /roleText is "AXButton" and \(labelText is "Close" or labelText is "关闭"\)/)
 })
 
 test('native polling reports the latest unmet observation instead of a recovered AX error', async () => {
@@ -262,4 +311,31 @@ test('managed Node acceptance rejects host reuse, old storage layout and missing
   assert.throws(() => inspectManagedNode(log, { components: {} }, manifest, runtime, appData), /must be activated/)
   assert.throws(() => inspectManagedNode(log, { components: { node: { ...component, path: root.replace('%3A', ':') } } }, manifest, runtime, appData), /PATH-safe/)
   assert.throws(() => inspectManagedNode(`provision complete cli=/harness/bin.js node=${node}\nspawning dsh web node=/host/node cli=/harness/bin.js`, active, manifest, runtime, appData), /real Host must launch/)
+})
+
+test('first-run dialog only tolerates coercion while reading a single AX role', () => {
+  for (const configureLater of [false, true]) {
+    const script = previewNoticeScript(123, configureLater)
+    assert.match(script, /set readingRole to true\s+try\s+set groupRole to role of itemNode as text\s+set readingRole to false/)
+    assert.match(script, /set readingButtonRole to true\s+try\s+set buttonRole to role of noticeNode as text\s+set readingButtonRole to false/)
+    assert.match(script, /not \(readingRole and errorNumber is -1700\) then error errorText number errorNumber/)
+    assert.match(script, /not \(readingButtonRole and errorNumber is -1700\) then error errorText number errorNumber/)
+    assert.match(script, /if \(count of matchingButtons\) is not 1 then error [^\n]+\n\s+perform action "AXPress"/)
+  }
+})
+
+
+test('managed pnpm version probing stays outside the source checkout', () => {
+  const world = join(tmpdir(), 'owned-workspace')
+  const pnpm = join(world, 'runtime', 'pnpm-global', 'bin', 'pnpm')
+  const env = { HOME: join(world, 'home'), PATH: '/usr/bin:/bin' }
+  const version = inspectManagedPnpm(pnpm, world, env, (binary, argv, options) => {
+    assert.equal(binary, pnpm)
+    assert.deepEqual(argv, ['--version'])
+    assert.equal(options.cwd, world)
+    assert.equal(options.env, env)
+    assert.equal(options.timeout, 30_000)
+    return '11.7.0\n'
+  })
+  assert.equal(version, '11.7.0')
 })

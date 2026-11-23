@@ -2,14 +2,14 @@
 
 [English](README.md) | 中文
 
-- 发布标识：计划 `yourbuddy-v0.4.19`；未验证发行标签或公开产品。
+- 发布标识：`yourbuddy-v0.4.19`，已公开且不可变的源码标签；所记录检查中 GitHub 产品 Release 仍不存在。注解标签对象 `4ca00c5cd12ebab2543a99249b478842b427e793` 解引用至 `a85a40554ab6f3a5d601023c42153e3c0086770b`。
 - 渠道：YourBuddy 桌面应用，macOS Apple Silicon。
-- 归档状态：发布前部分归档；正式产品验证仍待完成。
-- 当前源码：[C34](https://github.com/istarwyh/yourbuddy/commit/c34e3a33e03035971e79ebfa400eb856f8f5a178)。PR CI 测试其合入 `d7dec019c4e4c72fbac902ceaab9b8bf3ab9acb3` 的合成提交 `7a6be965dd5389b5011c2071c0bd2694ee932993`。二者均非未来发布提交。
+- 归档状态：部分完成；源码归档已验证，首次正式原生验收失败，安装包发布仍受阻。
+- 当前源码：[C34](https://github.com/istarwyh/yourbuddy/commit/c34e3a33e03035971e79ebfa400eb856f8f5a178)。PR CI 测试其合入 `d7dec019c4e4c72fbac902ceaab9b8bf3ab9acb3` 的合成提交 `7a6be965dd5389b5011c2071c0bd2694ee932993`。二者是源码 CI 身份，不是标签版本提交 a85。
 - 证据图集：[任务设置操作前](screenshots/tasks-before-on.png)、[重新打开设置](screenshots/tasks-reopened-off.png)、[市场入口](screenshots/included-marketplace-entry.png)、[配置界面](screenshots/marketplace-configuration.png)。
-- 下载：计划的[标签源码 ZIP](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.19.zip)及[标签归档](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.19/docs/releases/yourbuddy-v0.4.19)尚未发布或解压。下文相对证据为已审查的脱敏副本。
+- 下载：[标签源码 ZIP](https://github.com/istarwyh/yourbuddy/archive/refs/tags/yourbuddy-v0.4.19.zip)已下载并用 ditto 解压；[标签归档](https://github.com/istarwyh/yourbuddy/tree/yourbuddy-v0.4.19/docs/releases/yourbuddy-v0.4.19)保留冻结的发布前说明。下文后续观察属于独立证据更新，不修改标签。
 
-准备后的 master 为 `0f46f5010548ec002575d2803a064c2330c2c11a`（PR #118 于 2026-11-22 19:06:38 UTC 合并），其树 `1c93a2791807943a70d9576fd7ec8a9bf6d9ad9c` 与 C34 相同。版本准备在此之后进行；下文不把源码 CI 结果重标为未来仅版本变更标签提交的测试。
+准备后的 master 为 `0f46f5010548ec002575d2803a064c2330c2c11a`（PR #118 于 2026-11-22 19:06:38 UTC 合并），其树 `1c93a2791807943a70d9576fd7ec8a9bf6d9ad9c` 与 C34 相同。版本准备在此之后进行；下文不把源码 CI 结果重标为实际发布标签提交的测试。
 
 ## 用户发行说明
 
@@ -39,13 +39,15 @@
 | clean 源码全新品牌生产构建及安装 | 操作者报告 passed | 直接 clean C34 | [构建记录](evidence/clean-product-build.txt) |
 | 任务选项及插件市场入口录制 | Web UI 范围内 passed | 直接 C34 生产 Host 配合 Rust overlay | [UI 记录](evidence/gui-evidence.json) |
 | Node 系统下限及安装器夹具历史 | 仅有界元数据及夹具证据 | 外部二进制及较早本地源码 | 下文 |
-| 正式发布、原生及公开产品、网站 | not verified | 未来标签候选 | 待完成 |
+| 首次原生发布验收 | failed；已诊断过期 verifier 断言 | 标签 a85 Offline 应用 | [原生尝试](evidence/native-attempt-1.txt) |
+| 公开源码 ZIP | ditto passed；保留 UnZip 失败 | 不可变标签 a85 源码 | [ZIP 证据](evidence/source-zip.txt) |
+| 公开安装包、更新源及网站指引 | 受阻／待完成 | 无 GitHub 产品 Release | 下文 |
 
 ## 场景：最终 Linux 源码与浏览器消费者
 
 - 状态：以下统计范围内 passed；跳过仍为跳过。
 - 日期时间：2026-11-22 UTC（+00:00）；coverage job 为 17:09:35–18:22:07，产物 job 为 17:09:13–18:39:19。
-- 发布及提交：计划 `yourbuddy-v0.4.19`；上文 C34 源码及合成提交。构建为 PR 源码及浏览器构建产物，不是公开产品。
+- 发布及提交：`yourbuddy-v0.4.19`；上文 C34 源码及合成提交。构建为 PR 源码及浏览器构建产物，不是公开产品。
 - 环境：Ubuntu 26.04.1 LTS，镜像 20261116.202.1，Node 24.22.3、pnpm 11.28.5；浏览器阶段 Chromium 149.0.7827.55、WebKit 26.5。
 - 来源、数据及服务：最终 PR CI；模拟夹具及受控服务，不是真实服务商验收。
 
@@ -59,7 +61,7 @@
 
 - 状态：已观察源码行为 passed，明确保留预期失败和跳过项。
 - 日期时间：2026-11-22 17:08:56–18:21:37 UTC（+00:00）；生命周期用例结果为 18:04:08.742303 UTC。
-- 发布、提交及构建：计划 `yourbuddy-v0.4.19`；同一 C34 合成提交；源码套件，不是 Windows 或 macOS 安装包。
+- 发布、提交及构建：`yourbuddy-v0.4.19`；同一 C34 合成提交；源码套件，不是 Windows 或 macOS 安装包。
 - 环境：Windows Server 2025、10.0.26100 Datacenter，镜像 20261116.315.1；Node 24.22.3、pnpm 11.28.5。
 - 来源、数据及服务：当前 PR CI；隔离模拟配置/Profile 夹具和真实生命周期进程；不是真实模型、账户或当前运行 GUI 升级。
 
@@ -73,7 +75,7 @@
 
 - 状态：准备后产品范围内 passed。
 - 日期时间：2026-11-22 17:08:58–17:29:15 UTC（+00:00）；默认阶段成功 17:26:32.318283，安装后阶段成功 17:28:32.458388。
-- 发布、提交及构建：计划 `yourbuddy-v0.4.19`；同一 C34 合成提交；冻结准备后生产安装，非标签 DMG。
+- 发布、提交及构建：`yourbuddy-v0.4.19`；同一 C34 合成提交；冻结准备后生产安装，非标签 DMG。
 - 环境：macOS 15.8.2（24H232），arm64 镜像 20261118.0550.1；Node 24.22.3、pnpm 11.28.5、Chromium 149.0.7827.55、CPython 3.12.14、Harbor CLI 0.21.0、harbor-dsh-evolution 0.10.3。
 - 来源、数据及服务：当前 PR CI；模拟工作区和隔离 Profile；真实本地 Host/Profile/Python；verifier 提供受控 native invoke 桥接，不是打包 Tauri 权限或真实服务商。
 
@@ -87,7 +89,7 @@
 
 - 状态：负责人报告 passed，证据记录保留命令及构建后采集的主机元数据。
 - 日期时间：2026-11-22 18:41:10–18:41:53 UTC（+00:00）。
-- 发布、提交及构建：计划 `yourbuddy-v0.4.19`；直接 C34 `c34e3a33e03035971e79ebfa400eb856f8f5a178`，前后 clean；本地全新品牌构建，不是合成提交或发行产物。
+- 发布、提交及构建：`yourbuddy-v0.4.19`；直接 C34 `c34e3a33e03035971e79ebfa400eb856f8f5a178`，前后 clean；本地全新品牌构建，不是合成提交或发行产物。
 - 环境：macOS 15.6.1（24G90）、arm64、Node 24.22.3、pnpm 11.28.5；主机元数据于之后 18:51:51 UTC 采集，并非构建开始时间。来源为当前源码主代理 job bash1430；数据为构建及冻结依赖；不作真实模型服务声明。
 
 1. 从 clean 源码构建品牌生产产物。2. 全新冻结生产安装，并确认 HEAD 未变且仍 clean。
@@ -124,17 +126,47 @@ Node 元数据检查于 2026-11-22 21:44:33 UTC+08:00（Asia/Shanghai）通过�
 
 历史本地最终安装器夹具报告 17/17 通过，包含提前拒绝系统下限和在私有环境及应用目标下接受模拟回执。有界日志缺精确提交、时间及主机元数据，不视作当前 C34 或真实原生安装器通过。更早的夹具执行选中真实已安装 helper，写入七条安装器操作记录及相关文件。签名拒绝先于组件准备、替换或停止应用；操作者另行观察既有 GUI 未重启。审计未删除用户文件，也不证明所有用户文件未变。夹具已隔离环境根及全部显式应用目标。本脱敏摘要保留失败及修复，不含原始 JSON 或私有路径；原本地记录仍保留，未公开附入。
 
+## 场景：首次原生发布验收失败
+
+- 状态：failed；诊断不把实际失败执行追溯改成 passed。
+- 日期时间：2026-11-22 19:54:00.043116–19:56:20.412602 UTC（+00:00），原生验收步骤；发布操作者报告整个 job 耗时 33m15s。
+- 发布、提交及构建：`yourbuddy-v0.4.19`，不可变产品 `a85a40554ab6f3a5d601023c42153e3c0086770b`；新构建 Offline 应用，不是 C34 源码 CI 或公开安装包。
+- 环境：GitHub Actions macOS arm64、aarch64-apple-darwin、Node 24.22.3；有界证据未采集原生 runner 精确系统版本，不借用较早 CI 版本。
+- 来源、数据及服务：首次标签发布执行；隔离模拟原生验收 Profile；真实本地 Host 和原生 AX 观察，无模型服务商或用户账户验收。
+
+1. 构建标签准备后产品、组件、Bootstrap 包及体积上限检查、Offline 应用。2. 开始原生 Offline 验收，认证真实 Host，通过实际 Preview Notice，再用 AX 检查所属主窗口。
+
+预期：识别已认证工作台，操作设置并完成后续冷启动及生命周期检查后再发布。实际：Host 认证就绪及启动完成；最终截图和 AX 显示 Account menu、Codex popup、编辑框，Preview Notice 已消失。十三份完整 AX 采样均为零跳过节点。verifier 仍要求 Codex 同级根窗口直接存在 Settings，但当前 Settings 属于 Account menu 内部。步骤最终 condition unmet、exit 1。原生设置导航、后续两次冷启动及 relocation 未完成。准备后产品、组件、Bootstrap 上限及 Offline 构建成功不代表整体工作流全绿；资产暂存、更新源、校验值及发布仍受阻。
+
+证据：[失败执行 45060471500](https://github.com/istarwyh/yourbuddy/actions/runs/45060471500)及[脱敏尝试记录](evidence/native-attempt-1.txt)。中间可恢复 AX 错误不代替最终完整证据。20:01:27 UTC，按标签查询 Release 的 API 返回 404，而独立仓库查询成功。
+
+恢复及限制：严格限于 verifier 的修复可从可信 master 发起新的 existing-tag dispatch，保留标签产品 a85 不变、应用和 verifier 身份分开、重新检查 Release 不存在。此处未记录修复 verifier 的测试、dispatch 或成功恢复。产品变更必须新版本，不移动本标签。完整设置及原生命令权限、后续生命周期和公开检查仍未验证。
+
+## 场景：公开标签源码 ZIP
+
+- 状态：匿名下载、ditto 解压及源码归档检查 passed；保留两次 Apple UnZip 解压失败。
+- 日期时间：下载 2026-11-22 19:24:55–19:25:08 UTC（+00:00）；解压及内容审阅于 19:29:21 UTC 完成。
+- 发布、提交及构建：`yourbuddy-v0.4.19`，源码 `a85a40554ab6f3a5d601023c42153e3c0086770b`；公开源码 ZIP，不是已安装二进制。
+- 环境：本地 macOS 原生 ditto 和 Apple Info-ZIP UnZip 6.00；有界记录未包含精确主机系统版本。来源为本次发布源码下载审阅；数据为公开源码及脱敏归档；服务为匿名 GitHub HTTP，无模型或已执行产品。
+
+1. 下载不可变源码 ZIP，记录内容类型、大小、哈希及 ZIP comment。2. 用 ditto 完整解压，逐字节比较标签内十二个归档文件，读取双语说明、配对及五份证据，打开四张 PNG。3. 检查解压后的 desktop、Tauri、Cargo 版本元数据。
+
+预期：源码归档标识标签并包含可读证据。实际：HTTP 200、application/zip、95,823,429 字节；SHA-256 `076be1776090e01d929985e71b216ec500ad8498e6e1ba93db69331fb66154fa`；ZIP comment 为 a85；十二个归档文件均一致。两篇说明及四张 1200×834 截图已打开；版本源为 0.4.19，Tauri minimum 为 13.5。Apple UnZip 在继承 C 和显式 UTF-8 locale 下均因中文文件名 exit 50，当时仍有 336 GiB 空间；相同 ZIP 由 ditto 完整解压。不作通用解压器兼容保证。
+
+证据：[脱敏源码 ZIP 记录](evidence/source-zip.txt)。标签说明有意保持冻结的发布前版本，不包含后续观察。限制：未执行解压代码或应用；不是安装器、原生权限、签名及更新源、真实服务商、当前应用升级或网站验收。后续证据独立提交，不移动标签。
+
 ## 交付状态
 
-- 产品发布：待完成；PR #118 已合并，但最终源码 CI 全绿不证明存在 `yourbuddy-v0.4.19`、签名打包、原生安装或公开发布。
-- 验证归档：发布前部分归档，包含已审查截图、公开 GIF 附件及相对脱敏证据。最终证据提交、发行及原生和公开验证、解压可下载源码归档仍待完成。
-- 网站同步：待完成，因为 macOS 前提影响指引。独立记录双语指引、生产基础地址检查、部署提交及执行、实际线上 URL；这里不宣称部署或线上检查已完成。
-- 未验证范围：已计数的跳过及预期失败；真实 DeepSeek/服务商/账户；打包原生 Runtime Authority 及控件；最终标签构建、公开资产及哈希和签名及更新源和源码 ZIP；旧版真实原地升级、重启及会话恢复；完整 macOS 13.5 及可选工具矩阵。较早本地证据仍为历史。其他包发布渠道不适用。
+- 产品发布：受首次原生验收失败阻塞。源码标签及已验证源码 ZIP 存在，但未观察到 0.4.19 GitHub 产品 Release、公开安装包或稳定更新源；整体工作流失败。
+- 验证归档：部分完成，包含已审查 GUI 媒体、C34 源码证据、失败原生尝试及已验证标签源码 ZIP。标签说明仍为冻结发布前版本；后续观察属于此次独立证据更新。完整原生验收成功及公开安装包和更新验证仍待完成。
+- 网站同步：变更指引仍待同步。现有部署仍为较早网站版本（55b），最近成功执行为 [43875873457](https://github.com/istarwyh/yourbuddy/actions/runs/43875873457)；更新指引需要后续部署及双语线上验证，不宣称当前已同步。
+- 未验证范围：已计数的跳过及预期失败；真实 DeepSeek/服务商/账户；完整原生 Settings、Runtime Authority 及控件、后续两次冷启动及 relocation；公开安装包资产及哈希和签名及更新源；旧版真实原地升级、重启及会话恢复；完整 macOS 13.5 及可选工具矩阵。较早本地证据仍为历史。其他包发布渠道不适用。
 
 ## 交付清单
 
 - [x] 准确归属当前 C34 源码、PR 合成提交、测试计数及跳过、准备后桥接限制。
 - [x] 独立保留历史系统下限及夹具事件，不含私有路径和操作 JSON。
 - [ ] 确认标签内双语归档、配对、索引、已审查相对证据及最终不可变证据链接。
-- [ ] 验证真实发行、原生和公开资产及解压归档，而不仅是 CI。
+- [x] 下载并检查不可变源码 ZIP，保留解压器失败及 ditto 成功。
+- [ ] 完成原生恢复，独立验证公开安装包及更新源，而不仅是源码 CI。
 - [ ] 记录网站部署及线上检查，独立更新四项交付状态，不移动公开标签或替换安装包。

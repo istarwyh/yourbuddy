@@ -1,0 +1,16 @@
+Native release acceptance attempt 1: FAILED, not retrospectively passed.
+Run: https://github.com/istarwyh/yourbuddy/actions/runs/45060471500
+Job: https://github.com/istarwyh/yourbuddy/actions/runs/45060471500/job/137325009252
+Immutable product source: a85a40554ab6f3a5d601023c42153e3c0086770b, yourbuddy-v0.4.19.
+Annotated tag object: 4ca00c5cd12ebab2543a99249b478842b427e793.
+Environment: GitHub Actions macOS arm64, aarch64-apple-darwin, Node.js 24.22.3. Exact native runner OS version was not collected in this bounded evidence.
+2026-11-22T19:54:00.0431160Z Native Offline installation/cold-start verification began.
+2026-11-22T19:56:20.3980730Z Error: authenticated workbench in the native WebView did not complete: condition unmet.
+2026-11-22T19:56:20.4126020Z Process completed with exit code 1.
+Artifact: yourbuddy-native-acceptance-45060471500-1, created 2026-11-22T19:56:23Z; artifact API digest sha256:a397df53865c66af1b559ba600eac3ced1d995c2c846d09e0bb211c9dadc7e75.
+Read-only artifact diagnosis: actual Host authentication/runtime readiness and main-window boot completed. Final screenshot and complete AX tree showed Account menu, Codex popup and composer. Preview Notice was no longer present. Thirteen complete AX samples, zero skipped nodes; no final partial AX snapshot.
+The tagged verifier required exact actionable Codex AND direct Settings controls in the closed-menu root. The current Settings entry is inside Account menu. This stale assertion explains the observed acceptance mismatch; it does not make the failed run a pass or establish native Settings navigation.
+Prepared product, component build, Bootstrap ceiling and Offline build completed before the native failure, per the release operator's workflow review. Native Settings assertions, the two later cold starts and relocation were not completed. Asset staging, updater/checksums and publication remained blocked.
+At 2026-11-22T20:01:27Z, authenticated release-by-tag lookup returned HTTP 404; an independent repository lookup succeeded. This is point-in-time absence, not an authorization to bypass fresh absence checks.
+A reviewed verifier-only recovery may use a new existing-tag dispatch from trusted master while preserving tagged product a85. No corrected-verifier test, dispatch or successful native recovery is claimed in this record. Product-byte changes require a new version, not retagging.
+Scope: failed native acceptance and bounded diagnosis only. No full native authority/control, stable updater, public installer/signature, provider or in-place-upgrade success claim. Raw logs, private paths and installer-operation records are excluded.

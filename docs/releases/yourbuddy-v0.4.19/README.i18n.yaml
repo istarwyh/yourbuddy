@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/releases/yourbuddy-v0.4.19/README.md
 /yourbuddy-0-4-19:
-  en: 67e4efb9643d8c7e
-  zh: 7bc8dc149222d93d
+  en: 8069ff2fc2306389
+  zh: edd7c88817f48ad7
 /yourbuddy-0-4-19/user-release-notes:
   en: c38ee8d593c0bea2
   zh: ba9758a78bdf26a6
@@ -18,29 +18,35 @@
   en: 5b59c9fb294d5fbe
   zh: 23ba8d8842353059
 /yourbuddy-0-4-19/verification-summary:
-  en: bb5429dd2664d8aa
-  zh: b86fad0e6ecc0ed1
+  en: bee6fe322efa14e9
+  zh: e973ea7d97f0937a
 /yourbuddy-0-4-19/scenario-final-linux-source-and-browser-consumers:
-  en: 7724c30bf0dca6ff
-  zh: 19fd110b69a6f978
+  en: 4dad971f74342e7c
+  zh: 9d0737bd1028c929
 /yourbuddy-0-4-19/scenario-windows-coverage-and-saved-sidebar-choices:
-  en: 6d80e63853be5ec1
-  zh: 4fe6d4e6bcafd2f2
+  en: b132f1e42b905a27
+  zh: 3e9c72c751ba3884
 /yourbuddy-0-4-19/scenario-frozen-prepared-macos-product-and-installed-harbor:
-  en: aff3e44ee2653f38
-  zh: cd5660e55f377e33
+  en: cb1cb7a65050ea18
+  zh: 8bffc3a15c9c7447
 /yourbuddy-0-4-19/scenario-clean-c34-branded-production-build:
-  en: 57e851c2eeb7929b
-  zh: 86856cadc7e2ef7c
+  en: a4864ca4b6540664
+  zh: ec63ea15772bf35d
 /yourbuddy-0-4-19/scenario-task-choices-and-marketplace-entry-in-a-real-web-ui:
   en: 70a856e1dd8bb212
   zh: 3348f48d877abe8a
 /yourbuddy-0-4-19/platform-floor-and-historical-fixture-incident:
   en: 056a922d975020e1
   zh: 517da574ea584986
+/yourbuddy-0-4-19/scenario-failed-native-release-attempt-1:
+  en: e5d454177ba3beeb
+  zh: bc5d35e07832638d
+/yourbuddy-0-4-19/scenario-public-tagged-source-zip:
+  en: 84af5c334cc913f4
+  zh: 655ebc4e4cd7bd4b
 /yourbuddy-0-4-19/delivery-status:
-  en: 8987fc5e9a8bc8d0
-  zh: 549970fb10a3c39e
+  en: 1897753c87c3dab1
+  zh: 975144a00b501b84
 /yourbuddy-0-4-19/delivery-checklist:
-  en: 93c7964efd0d79d8
-  zh: e943a7bdc5902d2d
+  en: e15022d45d4568f2
+  zh: 3a018d87a35405af
