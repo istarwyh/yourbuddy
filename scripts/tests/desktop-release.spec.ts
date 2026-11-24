@@ -52,6 +52,7 @@ function assertPublicationGates(candidate: Workflow): void {
   expect(build.if).toBeUndefined()
   expect(build['continue-on-error']).toBeUndefined()
   const names = [
+    'Select existing release tag',
     'Validate release route and refuse an existing Release',
     'Refuse an existing Release for tag retry',
     'Verify release tag and desktop versions',
@@ -91,6 +92,7 @@ function assertPublicationGates(candidate: Workflow): void {
   for (const step of build.steps) {
     expect(step['continue-on-error'], step.name ?? step.uses).toBeUndefined()
     const conditions: Record<string, string> = {
+      'Select existing release tag': "env.RELEASE_MODE == 'existing-tag'",
       'Validate release route and refuse an existing Release': "env.RELEASE_MODE != 'existing-tag'",
       'Refuse an existing Release for tag retry': "env.RELEASE_MODE == 'existing-tag'",
       'Check types before candidate validation or publication': "env.RELEASE_MODE != 'existing-tag'",
