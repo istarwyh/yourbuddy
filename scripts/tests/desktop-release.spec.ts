@@ -580,7 +580,8 @@ describe('YourBuddy first publication', () => {
       build.steps.map(step => step.name === 'Verify prepared default workbench and optional Harbor' ? { ...step, run: step.run!.replace('await verifyPreparedProduct(', 'await skippedProductCheck(') } : step),
       build.steps.map(step => step.name === 'Publish the verified master tag atomically' ? { ...step, 'continue-on-error': true } : step),
     ]) {
-      expect(() => { assertPublicationGates({ ...workflow, jobs: { ...workflow.jobs, build: { ...build, steps: changedSteps } } }) }).toThrow()
+      const jobs = { ...workflow.jobs, build: { ...build, steps: changedSteps } }
+      expect(() => { assertPublicationGates({ ...workflow, jobs }) }).toThrow()
     }
   })
 })
