@@ -2232,6 +2232,13 @@ export async function verifyPreparedProduct(root = harnessRoot, productRuntimeRo
     if (lockPeers !== installedPeers) {
       throw new Error(`product peer verification count changed after install: lock=${lockPeers}, installed=${installedPeers}`)
     }
+    if (process.platform === 'darwin' || process.platform === 'linux') {
+      run(process.execPath, ['--test', join(desktopRoot, 'scripts', 'codex-auth-commit-lock.test.mjs')], {
+        env: { ...process.env, YOURBUDDY_AUTH_TEST_HARNESS: realpathSync(root) },
+        stdio: 'inherit',
+        timeout: 30_000,
+      })
+    }
     await verifyMarketplaceHostContract(root, world)
     writeDocumentPreviewFixtures(world, options.documentFixtureDirectory)
     await runHostSmoke(root, productRuntimeRoot, desktopOverlayPath, world, lifetime, 'core')

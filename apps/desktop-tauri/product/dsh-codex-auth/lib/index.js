@@ -2,11 +2,41 @@ import { _ as refreshTokens, a as DEFAULT_REQUEST_TIMEOUT_MS, b as writeAuthFile
 import { t as CODEX_NATIVE_CHECKPOINT_BLOCK_TYPE } from "./native-checkpoint-Def4ztmG.js";
 import z from "@deepseek-ai/schemastery";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
-import { withFileLock } from "@deepseek-ai/dsh-atomic-write";
+import { LlmError } from "@deepseek-ai/dsh-llm";
+import { tryLockExclusive } from "@deepseek-ai/node-addon-system/flock";
+import { open, realpath } from "node:fs/promises";
+import { setTimeout as delay } from "node:timers/promises";
 import { spawn } from "node:child_process";
 import { Service } from "@deepseek-ai/cordis";
 import { EnvHttpProxyAgent, setGlobalDispatcher } from "undici";
 import { clientRequestSchema } from "@deepseek-ai/dsh-client-connection";
+/** Match Codex's persistent sidecar and bounded OS lock for credential commits. */
+async function withCodexAuthCommitLock(authPath, signal, operation) {
+	const path = await realpath(authPath);
+	const lock = await open(`${path}.lock`, "a+", 384);
+	try {
+		const deadline = performance.now() + 5e3;
+		for (;;) {
+			throwIfAborted(signal);
+			try {
+				await tryLockExclusive(lock.fd);
+				break;
+			} catch (error) {
+				if (error?.code !== "EAGAIN" && error?.code !== "EWOULDBLOCK") {
+					throw new LlmError("YourBuddy could not lock the Codex login file for refresh. Use GPT Auth to sign in again.", "CODEX_AUTH_LOCK_FAILED");
+				}
+				if (performance.now() >= deadline) {
+					throw new LlmError("Another process is updating the Codex login. Wait a moment and retry.", "CODEX_AUTH_LOCK_TIMEOUT");
+				}
+				await delay(10, void 0, { signal });
+			}
+		}
+		throwIfAborted(signal);
+		return await operation(path);
+	} finally {
+		await lock.close();
+	}
+}
 //#region src/codex-auth-service.ts
 /**
 * The `codexAuth` service: login status and login-flow startup for the web
@@ -121,14 +151,14 @@ var CodexAuthService = class extends Service {
 			if (this.disposed) return void 0;
 			if (fresh) return cached.credential;
 		}
-		let flight = this.credentialFlight;
-		if (flight === void 0) {
-			flight = this.resolveCredential(this.lifecycleAbort.signal).finally(() => {
-				if (this.credentialFlight === flight) this.credentialFlight = void 0;
-			});
-			this.credentialFlight = flight;
-		}
-		return waitForCredential(flight, signal, this.lifecycleAbort.signal);
+		return waitForCredential(this.resolveCredentialOnce(), signal, this.lifecycleAbort.signal);
+	}
+	/** Join the same credential resolution from requests and background refresh. */
+	resolveCredentialOnce() {
+		this.credentialFlight ??= this.resolveCredential(this.lifecycleAbort.signal).finally(() => {
+			this.credentialFlight = void 0;
+		});
+		return this.credentialFlight;
 	}
 	/**
 	* Whether a cached credential may still be served: the token must remain
@@ -195,62 +225,57 @@ var CodexAuthService = class extends Service {
 			return Promise.reject(/* @__PURE__ */ new Error(`codex-auth: failed to start ${this.options.codexCommand} login: ${error instanceof Error ? error.message : String(error)}`));
 		}
 	}
-	/** Resolve from the latest locked document and refresh at most once. */
+	/** Serve a stable file snapshot directly. Only a due refresh needs the commit lock. */
 	async resolveCredential(signal) {
-		let observed;
+		let decision;
 		try {
-			observed = await readAuthFile(this.options.authJsonPath);
-			if (isAborted(signal)) return void 0;
+			decision = await this.decideRefresh(this.options.authJsonPath);
 		} catch (error) {
-			if (isAborted(signal)) return void 0;
-			this.warnCredentialFailure("pre-lock read could not inspect the Codex Login State", error);
+			if (isAborted(signal)) return;
+			this.warnCredentialFailure("could not read the Codex Login State", error);
+			throw new LlmError("YourBuddy could not read the Codex login file. Check GPT Auth and retry.", "CODEX_AUTH_READ_FAILED");
 		}
-		try {
-			const decision = await withFileLock(this.options.authJsonPath, () => this.decideRefreshLocked());
-			if (isAborted(signal)) return void 0;
-			if (decision.mode === "absent") {
-				this.publishStatus(statusFromFile(decision.file, this.available, this.codexVersion, this.options.credentialRef));
-				return;
-			}
-			if (decision.mode === "ready") {
-				this.publishStatus(statusFromFile(decision.snapshot.file, this.available, this.codexVersion, this.options.credentialRef));
-				this.recordResolved(decision.snapshot);
-				return credentialFromFile(decision.snapshot.file);
-			}
-			try {
-				const reply = await refreshTokens(decision.refreshToken, this.options.fetchImpl ?? fetch, signal);
-				if (isAborted(signal)) return void 0;
-				const adopted = await withFileLock(this.options.authJsonPath, () => this.adoptRefreshedLocked(decision.snapshot.file, reply, signal));
-				if (isAborted(signal) || adopted === void 0) return void 0;
-				this.publishStatus(statusFromFile(adopted.file, this.available, this.codexVersion, this.options.credentialRef));
-				this.recordResolved(adopted);
-				return credentialFromFile(adopted.file);
-			} catch (error) {
-				if (isAborted(signal)) return void 0;
-				const replacement = await readAuthSnapshot(this.options.authJsonPath);
-				if (isAborted(signal)) return void 0;
-				const leadMs = this.options.refreshLeadMs ?? 3e5;
-				if (canAdoptReplacement(decision.snapshot.file, replacement?.file, leadMs)) {
-					this.publishStatus(statusFromFile(replacement.file, this.available, this.codexVersion, this.options.credentialRef));
-					this.recordResolved(replacement);
-					return credentialFromFile(replacement.file);
-				}
-				this.warnCredentialFailure("token refresh failed; run `codex login` to restore the Codex Login State", error, decision.snapshot.file);
-				this.publishStatus(statusFromFile(replacement?.file, this.available, this.codexVersion, this.options.credentialRef));
-				return;
-			}
-		} catch (error) {
-			if (isAborted(signal)) return void 0;
-			this.warnCredentialFailure("could not coordinate the Codex Login State", error, observed);
-			return;
+		if (isAborted(signal)) return;
+		if (decision.mode === "refresh") decision = await this.refreshCredential(decision, signal);
+		if (isAborted(signal) || decision === void 0) return;
+		const file = decision.mode === "ready" ? decision.snapshot.file : decision.file;
+		this.publishStatus(statusFromFile(file, this.available, this.codexVersion, this.options.credentialRef));
+		if (decision.mode === "ready") {
+			this.recordResolved(decision.snapshot);
+			return credentialFromFile(file);
+		}
+		if (authState(file).accessToken !== void 0) {
+			throw new LlmError("The stored Codex login cannot be refreshed. Use GPT Auth to sign in again.", "CODEX_AUTH_REFRESH_FAILED");
 		}
 	}
-	/**
-	* Under the writer lock, read the auth file and return a side-effect-free
-	* refresh decision. Callers publish/cache only after their lifecycle check.
-	*/
-	async decideRefreshLocked() {
-		const snapshot = await readAuthSnapshot(this.options.authJsonPath);
+	/** Check lock availability and re-read before OAuth. Reacquire only to commit. */
+	async refreshCredential(previous, signal) {
+		try {
+			const decision = await withCodexAuthCommitLock(this.options.authJsonPath, signal, (path) => this.decideRefresh(path));
+			if (isAborted(signal)) return;
+			if (decision.mode !== "refresh") return decision;
+			previous = decision;
+			const reply = await refreshTokens(decision.refreshToken, this.options.fetchImpl ?? fetch, signal);
+			if (isAborted(signal)) return;
+			const adopted = await withCodexAuthCommitLock(this.options.authJsonPath, signal,
+				(path) => this.adoptRefreshedLocked(decision.snapshot.file, reply, signal, path));
+			if (isAborted(signal)) return;
+			if (adopted !== void 0) return { mode: "ready", snapshot: adopted };
+		} catch (error) {
+			if (isAborted(signal)) return;
+			this.warnCredentialFailure("could not refresh the Codex Login State", error, previous.snapshot.file);
+			if (error instanceof LlmError) throw error;
+		}
+		const replacement = await readAuthSnapshot(this.options.authJsonPath).catch(() => void 0);
+		if (isAborted(signal)) return;
+		if (canAdoptReplacement(previous.snapshot.file, replacement?.file, this.options.refreshLeadMs ?? 3e5)) {
+			return { mode: "ready", snapshot: replacement };
+		}
+		throw new LlmError("YourBuddy could not refresh the Codex login. Retry or use GPT Auth to sign in again.", "CODEX_AUTH_REFRESH_FAILED");
+	}
+	/** Read a complete credential generation and decide whether it needs refresh. */
+	async decideRefresh(path) {
+		const snapshot = await readAuthSnapshot(path);
 		if (snapshot === void 0) return {
 			mode: "absent",
 			file: void 0
@@ -283,9 +308,9 @@ var CodexAuthService = class extends Service {
 	* the OAuth round trip was in flight, in which case its newer document wins.
 	* Returns the document to serve, or `undefined` when the login is gone.
 	*/
-	async adoptRefreshedLocked(previous, reply, signal) {
-		if (isAborted(signal)) return void 0;
-		const current = await readAuthSnapshot(this.options.authJsonPath);
+	async adoptRefreshedLocked(previous, reply, signal, path) {
+		if (isAborted(signal) || await realpath(this.options.authJsonPath) !== path) return;
+		const current = await readAuthSnapshot(path);
 		if (isAborted(signal) || current === void 0) return void 0;
 		const leadMs = this.options.refreshLeadMs ?? 3e5;
 		if (!needsRefresh(authState(current.file), leadMs) && !refreshTooOld(current.file, 6912e5)) return current;
@@ -293,17 +318,17 @@ var CodexAuthService = class extends Service {
 			this.publishStatus(statusFromFile(current.file, this.available, this.codexVersion, this.options.credentialRef));
 			return;
 		}
-		if (!await this.commitAuthFile(mergeRefreshed(current.file, reply), signal)) return void 0;
+		if (!await this.commitAuthFile(path, mergeRefreshed(current.file, reply), signal)) return void 0;
 		if (isAborted(signal)) return void 0;
-		const persisted = await readAuthSnapshot(this.options.authJsonPath);
+		const persisted = await readAuthSnapshot(path);
 		if (persisted === void 0 || needsRefresh(authState(persisted.file), leadMs) || refreshTooOld(persisted.file, 6912e5)) return void 0;
 		return persisted;
 	}
 	/** Commit one non-cancellable atomic write while keeping teardown joined. */
-	async commitAuthFile(file, signal) {
+	async commitAuthFile(path, file, signal) {
 		if (isAborted(signal)) return false;
 		const writer = this.options.authFileWriter ?? writeAuthFile;
-		const commit = Promise.resolve().then(() => writer(this.options.authJsonPath, file));
+		const commit = Promise.resolve().then(() => writer(path, file));
 		this.commitFlights.add(commit);
 		try {
 			await commit;
@@ -380,49 +405,14 @@ var CodexAuthService = class extends Service {
 	* failures are logged and retried later.
 	*/
 	async refreshInBackground(signal) {
-		let retry = false;
+		if (isAborted(signal)) return;
 		try {
-			if (isAborted(signal)) return;
-			const decision = await withFileLock(this.options.authJsonPath, () => this.decideRefreshLocked());
-			if (isAborted(signal)) return;
-			if (decision.mode === "absent") {
-				this.publishStatus(statusFromFile(decision.file, this.available, this.codexVersion, this.options.credentialRef));
-				return;
-			}
-			if (decision.mode === "ready") {
-				this.publishStatus(statusFromFile(decision.snapshot.file, this.available, this.codexVersion, this.options.credentialRef));
-				this.recordResolved(decision.snapshot);
-				return;
-			}
-			try {
-				const reply = await refreshTokens(decision.refreshToken, this.options.fetchImpl ?? fetch, signal);
-				if (isAborted(signal)) return;
-				const adopted = await withFileLock(this.options.authJsonPath, () => this.adoptRefreshedLocked(decision.snapshot.file, reply, signal));
-				if (isAborted(signal)) return;
-				if (adopted === void 0) retry = true;
-				else {
-					this.publishStatus(statusFromFile(adopted.file, this.available, this.codexVersion, this.options.credentialRef));
-					this.recordResolved(adopted);
-				}
-			} catch (error) {
-				if (isAborted(signal)) return;
-				const replacement = await readAuthSnapshot(this.options.authJsonPath);
-				if (isAborted(signal)) return;
-				const leadMs = this.options.refreshLeadMs ?? 3e5;
-				if (canAdoptReplacement(decision.snapshot.file, replacement?.file, leadMs)) {
-					this.publishStatus(statusFromFile(replacement.file, this.available, this.codexVersion, this.options.credentialRef));
-					this.recordResolved(replacement);
-					return;
-				}
-				this.warnCredentialFailure("background token refresh failed; will retry later", error, decision.snapshot.file);
-				retry = true;
-			}
+			await this.resolveCredentialOnce();
 		} catch (error) {
 			if (isAborted(signal)) return;
-			this.warnCredentialFailure("background token refresh could not coordinate; will retry later", error);
-			retry = true;
+			this.warnCredentialFailure("background token refresh failed; will retry later", error);
+			this.scheduleBackgroundRetry();
 		}
-		if (retry && !this.disposed) this.scheduleBackgroundRetry();
 	}
 	clearRefreshTimer() {
 		if (this.refreshTimer === void 0) return;

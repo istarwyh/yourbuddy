@@ -6625,6 +6625,9 @@ importers:
       '@deepseek-ai/dsh-web':
         specifier: workspace:*
         version: link:../../web/web
+      '@deepseek-ai/node-addon-system':
+        specifier: workspace:*
+        version: link:../../../native/system/packages/entry
       '@deepseek-ai/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
