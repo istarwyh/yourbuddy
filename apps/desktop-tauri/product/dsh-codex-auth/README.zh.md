@@ -437,6 +437,7 @@ dsh plugin --profile web list
   Host RPC 拒绝。
 - 非 loopback 客户端不注册 GPT Auth 设置与账号 RPC binding，但仍保留 `generate_image` 与 `list_images` 结果视图。
 - 图片附件 ID 不是 bearer capability；会话历史中必须存在对应的持久 ImageBlock。
+- YourBuddy 直接从 `auth.json` 读取有效登录。刷新写回使用 Codex 的 `auth.json.lock` 获取操作系统文件锁，并保留该文件。等待锁超时会与未登录分别提示。系统缺少内置 POSIX 文件锁支持时，请用 Codex CLI 刷新登录。
 - 若 Codex 只把凭证放在系统钥匙串，`auth.json` 可能没有可用 token。可在
   `~/.codex/config.toml` 设置 `cli_auth_credentials_store = "file"`，再执行
   `codex login`。

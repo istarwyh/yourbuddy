@@ -105,13 +105,19 @@ export declare class CodexAuthService extends Service {
     login(mode: CodexAuthLoginMode): Promise<{
         started: boolean;
     }>;
-    /** Resolve from the latest locked document and refresh at most once. */
+    /** Serve a stable file snapshot directly. Only a due refresh needs the commit lock. */
     private resolveCredential;
+    /** Read a complete credential generation and decide whether it needs refresh. */
+    private decideRefresh;
+    private refreshCredential;
+    private resolveCredentialOnce;
     /**
      * Under the writer lock, read the auth file and return a side-effect-free
      * refresh decision. Callers publish/cache only after their lifecycle check.
      */
-    private decideRefreshLocked;
+    private decideRefresh;
+    private refreshCredential;
+    private resolveCredentialOnce;
     /**
      * Under the writer lock: fold a refresh reply into the current document,
      * preserving unknown fields — unless another writer already refreshed while

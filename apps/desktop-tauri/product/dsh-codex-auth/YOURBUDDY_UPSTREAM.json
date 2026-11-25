@@ -10,9 +10,15 @@
   "patches": [
     "Set @deepseek-ai/dsh-compaction peer range from 0.2.1-rc.1 || 0.2.1-rc.2 to 0.2.2-rc.5.",
     "Set @deepseek-ai/dsh-compaction-basic peer range from 0.2.1-rc.1 || 0.2.1-rc.2 to 0.2.2-rc.5.",
-    "Set @deepseek-ai/dsh-token-meter peer range from 0.2.1-rc.1 || 0.2.1-rc.2 to 0.2.2-rc.5."
+    "Set @deepseek-ai/dsh-token-meter peer range from 0.2.1-rc.1 || 0.2.1-rc.2 to 0.2.2-rc.5.",
+    {
+      "id": "codex-commit-lock",
+      "file": "patches/dsh-codex-auth-0.3.4-rc.2-codex-commit-lock.patch",
+      "sha256": "cd76f9bb4fd98daeaa9500595ab00b47e7e102fbccce9d1ab8100b4db07e3ba8",
+      "purpose": "Read current credentials without a lock and use the Codex CLI advisory lock for refresh commits."
+    }
   ],
   "repository": "https://github.com/suntianc/dsh-codex-auth",
   "license": "MIT",
-  "treeSha256": "ad8dc132e1db3c27675f708b3c0d851ff30ca057e29f56e7cf5be9d8cfba27c1"
+  "treeSha256": "aa69a8e1620acd43b9f9a2794ad93218e1ad4bb65d27210b8347f373629729a8"
 }

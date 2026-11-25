@@ -520,6 +520,7 @@ Do not also add an `openai-codex` entry under `llm-pi-ai.providers` or install
 - Non-loopback clients omit the GPT Auth Settings and account-RPC bindings but keep the `generate_image` and `list_images` result views registered.
 - Image attachment IDs are not bearer capabilities: session history must contain
   the corresponding durable ImageBlock.
+- YourBuddy reads a current login directly from `auth.json`. Refresh writes use Codex’s persistent `auth.json.lock` with an OS advisory lock and leave the sidecar in place. A lock timeout is reported separately from an absent login. On systems without the bundled POSIX lock binding, refresh the session with the Codex CLI.
 - When Codex stores credentials only in the OS keyring, `auth.json` may contain
   no usable token. Set `cli_auth_credentials_store = "file"` in
   `~/.codex/config.toml`, then run `codex login` again.
