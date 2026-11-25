@@ -23,15 +23,14 @@ on:
         description: Candidate validation or first publication, exact operator-verified master SHA
         required: false
       tag:
-        description: Existing unpublished yourbuddy-v* tag to build after a failed run
-        required: true
-        default: desktop-v0.2.0-rc.1-0.3
+        description: Required for existing-tag only (for example yourbuddy-v0.4.19)
+        required: false
 
 permissions:
   contents: write
 
 concurrency:
-  group: yourbuddy-release-${{ github.event_name == 'workflow_dispatch' && (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.11' || inputs.tag) || github.ref_name }}
+  group: yourbuddy-release-${{ github.event_name == 'push' && github.ref_name || (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.11' || inputs.tag) }}
   cancel-in-progress: false
 
 env:
@@ -40,16 +39,28 @@ env:
   VERIFIED_MASTER_SHA: ${{ inputs.verified_master_sha }}
   NODE_VERSION: '24'
   RUST_TARGET: aarch64-apple-darwin
-  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.11' || inputs.tag) || github.ref_name }}
+  RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.11' || inputs.tag) }}
 
 jobs:
   build:
     name: Build macOS arm64
     runs-on: macos-15
     steps:
+      - name: Select existing release tag
+        id: existing-tag
+        if: env.RELEASE_MODE == 'existing-tag'
+        run: |
+          case "$RELEASE_TAG" in
+            yourbuddy-v[0-9]*) ;;
+            *) echo "::error::Set the existing-tag input to an explicit yourbuddy-v* tag."; exit 1 ;;
+          esac
+          ref="refs/tags/$RELEASE_TAG"
+          git check-ref-format "$ref" || { echo "::error::Invalid release tag."; exit 1; }
+          printf 'ref=%s\n' "$ref" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v6
         with:
-          ref: ${{ env.RELEASE_MODE != 'existing-tag' && 'master' || env.RELEASE_TAG }}
+          ref: ${{ env.RELEASE_MODE != 'existing-tag' && 'master' || steps.existing-tag.outputs.ref }}
           fetch-depth: 0
           persist-credentials: false
 

@@ -34,13 +34,13 @@ interface Workflow {
 
 const workflow = load(readFileSync(resolve(root, '.github/workflows/desktop-release.yml'), 'utf8')) as Workflow
 const firstPublicationCondition = "env.RELEASE_MODE == 'first-publication'"
-const tagExpression = "${{ github.event_name == 'workflow_dispatch' && (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.11' || inputs.tag) || github.ref_name }}"
+const tagExpression = "${{ github.event_name == 'push' && github.ref_name || (inputs.mode != 'existing-tag' && inputs.mode != '' && 'yourbuddy-v0.4.11' || inputs.tag) }}"
 
 // These canonical string inputs use the same truthiness and equality in Actions and JavaScript.
 function evaluate(expression: string | undefined, context: Record<string, string>): string {
   if (expression === undefined) return 'true'
   const source = expression.replace(/\balways\(\)/g, 'true').trim().replace(/^\$\{\{|\}\}$/g, '')
-    .replace(/\b(?:github|inputs|env)(?:\.[a-zA-Z_][a-zA-Z_0-9]*)+/g,
+    .replace(/\b(?:github|inputs|env|steps)(?:\.[a-zA-Z_][a-zA-Z_0-9-]*)+/g,
       key => JSON.stringify(context[key] ?? ''))
   return String(runInNewContext(source, {}, { timeout: 1000 }))
 }
@@ -52,6 +52,7 @@ function assertPublicationGates(candidate: Workflow): void {
   expect(build.if).toBeUndefined()
   expect(build['continue-on-error']).toBeUndefined()
   const names = [
+    'Select existing release tag',
     'Validate release route and refuse an existing Release',
     'Refuse an existing Release for tag retry',
     'Verify release tag and desktop versions',
@@ -91,6 +92,7 @@ function assertPublicationGates(candidate: Workflow): void {
   for (const step of build.steps) {
     expect(step['continue-on-error'], step.name ?? step.uses).toBeUndefined()
     const conditions: Record<string, string> = {
+      'Select existing release tag': "env.RELEASE_MODE == 'existing-tag'",
       'Validate release route and refuse an existing Release': "env.RELEASE_MODE != 'existing-tag'",
       'Refuse an existing Release for tag retry': "env.RELEASE_MODE == 'existing-tag'",
       'Check types before candidate validation or publication': "env.RELEASE_MODE != 'existing-tag'",
@@ -183,9 +185,8 @@ describe('YourBuddy first publication', () => {
           version: { description: 'Candidate validation or first publication (fixed at 0.4.11)', default: '0.4.11', required: false },
           verified_master_sha: { description: 'Candidate validation or first publication, exact operator-verified master SHA', required: false },
           tag: {
-            description: 'Existing unpublished yourbuddy-v* tag to build after a failed run',
-            required: true,
-            default: 'desktop-v0.2.0-rc.1-0.3',
+            description: 'Required for existing-tag only (for example yourbuddy-v0.4.19)',
+            required: false,
           },
         },
       },
@@ -213,19 +214,48 @@ describe('YourBuddy first publication', () => {
     }
   })
 
+  it.skipIf(process.platform === 'win32')('selects an explicit full tag ref before checkout', () => {
+    const select = workflow.jobs.build!.steps[0]!
+    expect(select.name).toBe('Select existing release tag')
+    expect(select.if).toBe("env.RELEASE_MODE == 'existing-tag'")
+    const blankTag = evaluate(workflow.env.RELEASE_TAG, {
+      'github.event_name': 'workflow_dispatch', 'inputs.mode': 'existing-tag', 'github.ref_name': 'master',
+    })
+    expect(blankTag).toBe('')
+    const fixture = mkdtempSync(join(tmpdir(), 'yourbuddy-release-tag-input-'))
+    try {
+      const output = join(fixture, 'output')
+      for (const tag of [blankTag, 'desktop-v0.2.0-rc.1-0.3', 'yourbuddy-v0.4.19^{}']) {
+        const result = spawnSync('bash', ['-c', select.run!], {
+          env: { ...process.env, RELEASE_TAG: tag, GITHUB_OUTPUT: output }, encoding: 'utf8', timeout: 5000,
+        })
+        expect(result.status).toBe(1)
+        expect(result.stdout).toContain('::error::')
+        expect(existsSync(output)).toBe(false)
+      }
+      const result = spawnSync('bash', ['-c', select.run!], {
+        env: { ...process.env, RELEASE_TAG: 'yourbuddy-v0.4.19', GITHUB_OUTPUT: output }, encoding: 'utf8', timeout: 5000,
+      })
+      expect(result.status, result.stderr).toBe(0)
+      expect(readFileSync(output, 'utf8')).toBe('ref=refs/tags/yourbuddy-v0.4.19\n')
+    } finally {
+      rmSync(fixture, { recursive: true, force: true })
+    }
+  })
+
   it('retains token permissions and keeps checkout credentials out of persisted Git configuration', () => {
     expect(workflow.permissions).toEqual({ contents: 'write' })
-    const checkout = workflow.jobs.build!.steps[0]!
+    const checkout = workflow.jobs.build!.steps[1]!
     expect(checkout).toEqual({
       uses: 'actions/checkout@v6',
       with: {
-        ref: "${{ env.RELEASE_MODE != 'existing-tag' && 'master' || env.RELEASE_TAG }}",
+        ref: "${{ env.RELEASE_MODE != 'existing-tag' && 'master' || steps.existing-tag.outputs.ref }}",
         'fetch-depth': 0,
         'persist-credentials': false,
       },
     })
     expect(evaluate(String(checkout.with!.ref), { 'env.RELEASE_MODE': 'first-publication', 'env.RELEASE_TAG': 'yourbuddy-v0.4.9' })).toBe('master')
-    expect(evaluate(String(checkout.with!.ref), { 'env.RELEASE_MODE': 'existing-tag', 'env.RELEASE_TAG': 'yourbuddy-v0.4.9' })).toBe('yourbuddy-v0.4.9')
+    expect(evaluate(String(checkout.with!.ref), { 'env.RELEASE_MODE': 'existing-tag', 'steps.existing-tag.outputs.ref': 'refs/tags/yourbuddy-v0.4.9' })).toBe('refs/tags/yourbuddy-v0.4.9')
     expect(workflow.env.GH_TOKEN).toBeUndefined()
     expect(JSON.stringify(workflow)).not.toMatch(/gh auth setup-git|git config.*(?:credential|extraheader)|--force|workflow run/)
   })
