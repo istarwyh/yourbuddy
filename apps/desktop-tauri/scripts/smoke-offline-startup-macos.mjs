@@ -221,6 +221,7 @@ export function settingsNavigationScript(pid, action) {
     log ("AX_STAGE:window-enumeration:end count=" & (count of allNodes))
     ${action === 'account' ? '' : `set scopes to {}
     ${dialog ? 'set matchedScopeName to ""' : ''}
+    set skippedScopes to 0
     log "AX_STAGE:scope-search:begin"
     repeat with scopeNode in allNodes
       set readingScopeRole to true
@@ -235,17 +236,22 @@ export function settingsNavigationScript(pid, action) {
           end if
         end if` : 'if scopeRole is "AXMenu" then set end of scopes to contents of scopeNode'}
       on error errorText number errorNumber
-        if errorNumber is not -1719 and errorNumber is not -1728 and not (readingScopeRole and errorNumber is -1700) then error errorText number errorNumber
+        if errorNumber is -1719 or errorNumber is -1728 or (readingScopeRole and errorNumber is -1700) then
+          set skippedScopes to skippedScopes + 1
+        else
+          error errorText number errorNumber
+        end if
       end try
     end repeat
     log ("AX_STAGE:scope-search:end count=" & (count of scopes))
+    ${action === 'dialog' ? 'if (count of scopes) is 0 then return "AX_SKIPPED_NODES=" & skippedScopes' : ''}
     if (count of scopes) is not 1 then error "Expected exactly one ${dialog ? 'named Settings dialog' : 'opened account menu'}"
     log "AX_STAGE:scoped-descendants:begin"
     set allNodes to entire contents of item 1 of scopes
     log ("AX_STAGE:scoped-descendants:end count=" & (count of allNodes))`}
     set matchingButtons to {}
     set report to ${action === 'dialog' ? '"AXGroup" & tab & matchedScopeName & tab & linefeed' : '""'}
-    set skippedNodes to 0
+    set skippedNodes to ${dialog ? 'skippedScopes' : '0'}
     log "AX_STAGE:control-scan:begin"
     repeat with itemNode in allNodes
       set readingRole to true
@@ -516,8 +522,67 @@ async function refuseExternalRequests() {
   }
 }
 
+class SettingsStateNotReached extends Error {}
+
+/** Only repeated complete observations can establish a navigation regression.
+ * AX errors or partial reads break that evidence, not the release.
+ */
+export async function waitForSettingsState(label, readState, matches, timeout = PROCESS_TIMEOUT_MS, poll = until) {
+  let completeMisses = 0
+  try {
+    return await poll(label, () => {
+      try {
+        const snapshot = readState()
+        if (snapshot.skippedNodes !== 0) {
+          completeMisses = 0
+          return false
+        }
+        if (matches(snapshot.report)) return snapshot.report
+        completeMisses++
+        return false
+      } catch (error) {
+        completeMisses = 0
+        throw error
+      }
+    }, timeout, true)
+  } catch (error) {
+    if (completeMisses >= 2) throw new SettingsStateNotReached(label, { cause: error })
+    throw error
+  }
+}
+
+export function settingsNavigationOutcome(error) {
+  return error instanceof SettingsStateNotReached ? 'regression' : 'unverified'
+}
+
+async function verifySettingsNavigation(pid, evidence, round, observeWindow) {
+  const navigationEvidence = join(evidence, `boot-${round}-navigation-observations.jsonl`)
+  const observe = action => observeSettingsNavigation(pid, action, navigationEvidence)
+  const windowSnapshot = () => {
+    const snapshot = parseWindowInspection(apple(windowInspectionScript(pid)))
+    observeWindow(snapshot)
+    return snapshot
+  }
+  assert.equal(observe('account'), 'pressed-account')
+  const menu = await waitForSettingsState('Settings item did not appear in the native Account menu', windowSnapshot, nativeSettingsMenuVisible)
+  writeFileSync(join(evidence, `boot-${round}-account-menu.txt`), redactEvidence(menu))
+  assert.equal(observe('settings'), 'pressed-settings')
+  const dialog = await waitForSettingsState('Settings did not expose its General and Close buttons', () => {
+    const snapshot = parseWindowInspection(observe('dialog'))
+    observeWindow(snapshot)
+    return snapshot
+  }, nativeSettingsDialogVisible)
+  writeFileSync(join(evidence, `boot-${round}-settings-dialog.txt`), redactEvidence(dialog))
+  assert.equal(observe('close'), 'pressed-close')
+  await waitForSettingsState('Settings did not close and return to the workbench', () => {
+    const scope = parseWindowInspection(observe('dialog'))
+    if (scope.report || scope.skippedNodes) return scope
+    return windowSnapshot()
+  }, nativeSettingsDialogClosed)
+}
+
 /** Run unmodified application code against signed Offline seeds without publishing anything. */
-export async function smokeOfflineStartup(executable, outputRoot, version, managedNode = false) {
+export async function smokeOfflineStartup(executable, outputRoot, version, managedNode = false, settingsOnly = false) {
   requireAccessibility()
   assert(/^\d+\.\d+\.\d+$/.test(version), 'expected version must be X.Y.Z')
   executable = resolve(executable)
@@ -557,7 +622,7 @@ export async function smokeOfflineStartup(executable, outputRoot, version, manag
       excludedNodeCandidates, boots: [],
     }
     let activeBefore
-    for (let round = 1; round <= 3; round++) {
+    for (let round = 1; round <= (settingsOnly ? 1 : 3); round++) {
       const startedAt = Date.now()
       const offset = read(join(appData, 'boot.log')).length
       let stdio = ''
@@ -648,25 +713,9 @@ export async function smokeOfflineStartup(executable, outputRoot, version, manag
           return nativeWorkbenchVisible(value) && value
         }, workbenchTimeLeft(), true)
         writeFileSync(join(evidence, `boot-${round}-accessibility.txt`), redactEvidence(view))
-        const navigationEvidence = join(evidence, `boot-${round}-navigation-observations.jsonl`)
-        assert.equal(observeSettingsNavigation(child.pid, 'account', navigationEvidence), 'pressed-account')
-        const menu = await until('Settings item in the native Account menu', () => {
-          const value = inspectWindow(child.pid, false, observeWindow)
-          return nativeSettingsMenuVisible(value) && value
-        }, workbenchTimeLeft(), true)
-        writeFileSync(join(evidence, `boot-${round}-account-menu.txt`), redactEvidence(menu))
-        assert.equal(observeSettingsNavigation(child.pid, 'settings', navigationEvidence), 'pressed-settings')
-        const dialog = await until('actionable native Settings dialog', () => {
-          const snapshot = parseWindowInspection(observeSettingsNavigation(child.pid, 'dialog', navigationEvidence))
-          observeWindow(snapshot)
-          return nativeSettingsDialogVisible(snapshot.report) && snapshot.report
-        }, workbenchTimeLeft(), true)
-        writeFileSync(join(evidence, `boot-${round}-settings-dialog.txt`), redactEvidence(dialog))
-        assert.equal(observeSettingsNavigation(child.pid, 'close', navigationEvidence), 'pressed-close')
-        await until('native Settings dialog closed', () => {
-          const value = inspectWindow(child.pid, false, observeWindow)
-          return nativeSettingsDialogClosed(value)
-        }, workbenchTimeLeft(), true)
+        if (settingsOnly || managedNode) {
+          await verifySettingsNavigation(child.pid, evidence, round, observeWindow)
+        }
         assert.equal(inspectWindow(child.pid, true), 'pressed', 'close through the real native window command')
         await until('native close', () => child.exitCode !== null || child.signalCode !== null)
         const outcome = await ended
@@ -698,7 +747,8 @@ export async function smokeOfflineStartup(executable, outputRoot, version, manag
     // Paths are within the throwaway HOME and are unnecessary in the retained result.
     for (const component of Object.values(summary.active.components)) delete component.path
     writeFileSync(join(evidence, 'result.json'), `${JSON.stringify(summary, null, 2)}\n`)
-    console.log(`native Offline startup: signed ${version}, real install/authenticated workbench, and two subsequent cold boots passed`)
+    if (settingsOnly) console.log(`Native Settings navigation passed on signed ${version}`)
+    else console.log(`native Offline startup: signed ${version}, real install/authenticated workbench, and two subsequent cold boots passed`)
   }
   finally {
     if (proxy) await proxy.close()
@@ -709,5 +759,22 @@ export async function smokeOfflineStartup(executable, outputRoot, version, manag
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (process.argv[2] === '--preflight') requireAccessibility()
-  else await smokeOfflineStartup(process.argv[2], process.argv[3], process.argv[4], process.argv[5] === '--managed-node')
+  else if (process.argv[5] === '--settings-navigation') {
+    const statusPath = join(process.argv[3], 'evidence', 'settings-navigation-result.json')
+    let result
+    try {
+      await smokeOfflineStartup(process.argv[2], process.argv[3], process.argv[4], false, true)
+      result = { status: 'passed' }
+    }
+    catch (error) {
+      result = { status: settingsNavigationOutcome(error), reason: redactEvidence(error.message ?? String(error)) }
+      process.exitCode = 1
+    }
+    mkdirSync(dirname(statusPath), { recursive: true, mode: 0o700 })
+    writeFileSync(statusPath, `${JSON.stringify(result, null, 2)}\n`)
+  }
+  else {
+    assert(process.argv[5] === undefined || process.argv[5] === '--managed-node', 'unknown native acceptance mode')
+    await smokeOfflineStartup(process.argv[2], process.argv[3], process.argv[4], process.argv[5] === '--managed-node')
+  }
 }

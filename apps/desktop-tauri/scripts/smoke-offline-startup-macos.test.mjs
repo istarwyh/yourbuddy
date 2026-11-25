@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { inspectManagedNode, inspectManagedPnpm, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, nativeSettingsMenuVisible, nativeSettingsDialogVisible, nativeSettingsDialogClosed, settingsNavigationScript, observeSettingsNavigation, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
+import { inspectManagedNode, inspectManagedPnpm, requireNoHostNode, childIsActive, descendantPids, inspectBoot, isOwnedHost, isolatedEnvironment, ownedProcessDescendants, ownsApplicationProcess, parseProcessRecord, parseWindowInspection, nativeWorkbenchVisible, nativeSettingsMenuVisible, nativeSettingsDialogVisible, nativeSettingsDialogClosed, settingsNavigationScript, observeSettingsNavigation, waitForSettingsState, settingsNavigationOutcome, until, previewNoticeScript, previewNoticeVisible, redactEvidence, sameProcessIdentity, saveWindowFailure, windowInspectionScript } from './smoke-offline-startup-macos.mjs'
 
 const manifest = { appVersion: '0.4.9', releaseTag: 'yourbuddy-v0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
 const active = { appVersion: '0.4.9', components: { harness: { id: 'current' }, pnpmStore: { id: 'store' } } }
@@ -242,6 +242,8 @@ test('native Settings navigation presses exact scoped controls and inspects an a
     assert.doesNotMatch(script, /keystroke|set value|do JavaScript/)
     if (action === 'dialog') {
       assert.match(script, /return report & "AX_SKIPPED_NODES="/)
+      assert.match(script, /if \(count of scopes\) is 0 then return "AX_SKIPPED_NODES=" & skippedScopes/)
+      assert.match(script, /set skippedNodes to skippedScopes/)
       assert(!script.includes('AXPress'))
     } else {
       assert.match(script, /if \(count of matchingButtons\) is not 1 then error/)
@@ -249,7 +251,7 @@ test('native Settings navigation presses exact scoped controls and inspects an a
     }
     if (action !== 'account') {
       assert.match(script, /set readingScopeRole to true\s+try\s+set scopeRole to role of scopeNode as text\s+set readingScopeRole to false\s+if scopeRole/)
-      assert.match(script, /if errorNumber is not -1719 and errorNumber is not -1728 and not \(readingScopeRole and errorNumber is -1700\) then error errorText number errorNumber/)
+      assert.match(script, /if errorNumber is -1719 or errorNumber is -1728 or \(readingScopeRole and errorNumber is -1700\) then\s+set skippedScopes to skippedScopes \+ 1\s+else\s+error errorText number errorNumber/)
       assert.match(script, /if \(count of scopes\) is not 1 then error/)
       assert.match(script, /set allNodes to entire contents of item 1 of scopes/)
     }
@@ -418,4 +420,36 @@ test('managed pnpm version probing stays outside the source checkout', () => {
     return '11.7.0\n'
   })
   assert.equal(version, '11.7.0')
+})
+
+test('reports proven Settings regression separately from incomplete or timed-out automation', async () => {
+  const snapshot = (report, skippedNodes = 0) => ({ report, skippedNodes })
+  const valid = snapshot('AXGroup\tSettings\t\nAXButton\tGeneral\t\nAXButton\tClose\t')
+  const absent = snapshot('')
+  const partial = snapshot(valid.report, 1)
+  const timeout = Object.assign(new Error('osascript timed out'), { code: 'ETIMEDOUT' })
+  function run(observations) {
+    let i = 0
+    return waitForSettingsState('Settings controls missing', () => {
+      const observation = observations[i++]
+      if (observation instanceof Error) throw observation
+      return observation
+    }, nativeSettingsDialogVisible, 1000, async (_label, observe, _timeout, retryErrors) => {
+      assert.equal(retryErrors, true)
+      while (i < observations.length) {
+        try {
+          const result = observe()
+          if (result) return result
+        } catch (error) {
+          assert.equal(error, timeout)
+        }
+      }
+      throw new Error('poll budget exhausted')
+    })
+  }
+  assert.equal(await run([timeout, partial, absent, valid]), valid.report)
+  await assert.rejects(run([absent, absent]), error => settingsNavigationOutcome(error) === 'regression')
+  for (const samples of [[timeout], [partial, partial], [absent, absent, timeout], [absent, partial, absent]]) {
+    await assert.rejects(run(samples), error => settingsNavigationOutcome(error) === 'unverified')
+  }
 })

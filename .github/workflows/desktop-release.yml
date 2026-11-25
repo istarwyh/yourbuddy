@@ -45,6 +45,8 @@ jobs:
   build:
     name: Build macOS arm64
     runs-on: macos-15
+    outputs:
+      published-tag: ${{ steps.publish.outputs.tag }}
     steps:
       - name: Select existing release tag
         id: existing-tag
@@ -442,6 +444,7 @@ jobs:
         run: cp release-assets/latest.json release-assets/SHA256SUMS.txt "$RUNNER_TEMP/yourbuddy-prepared-acceptance/"
 
       - name: Publish release
+        id: publish
         if: env.RELEASE_MODE != 'candidate-validation'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -454,6 +457,7 @@ jobs:
           else
             gh release create yourbuddy-updater release-assets/latest.json --target "$(git rev-parse HEAD)" --title "YourBuddy update channel" --notes "Signed macOS arm64 update manifest." --prerelease
           fi
+          printf 'tag=%s\n' "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Upload validation candidate artifacts
         if: env.RELEASE_MODE == 'candidate-validation'
@@ -479,5 +483,76 @@ jobs:
         with:
           name: yourbuddy-native-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/offline-startup-smoke/evidence/
+          if-no-files-found: warn
+          retention-days: 7
+
+  settings-navigation:
+    name: Native Settings navigation (advisory)
+    needs: build
+    if: needs.build.outputs.published-tag != ''
+    runs-on: macos-15
+    timeout-minutes: 20
+    continue-on-error: true
+    permissions:
+      contents: read
+    env:
+      PUBLISHED_TAG: ${{ needs.build.outputs.published-tag }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          sparse-checkout: apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Fetch and verify the published Offline app
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version="${PUBLISHED_TAG#yourbuddy-v}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          asset="yourbuddy-$version-offline-macos-arm64.app.tar.gz"
+          download="$RUNNER_TEMP/settings-navigation-download"
+          mkdir -p "$download/app"
+          gh release download "$PUBLISHED_TAG" --pattern "$asset" --pattern SHA256SUMS.txt --dir "$download"
+          cd "$download"
+          awk -v asset="$asset" '$2 == asset {print; count++} END {if (count != 1) exit 1}' SHA256SUMS.txt > offline.sha256
+          shasum -a 256 --check offline.sha256
+          tar -xzf "$asset" -C app
+
+      - name: Verify Account → Settings → Close
+        run: |
+          node apps/desktop-tauri/scripts/smoke-offline-startup-macos.mjs \
+            "$RUNNER_TEMP/settings-navigation-download/app/YourBuddy.app/Contents/MacOS/yourbuddy" \
+            "$RUNNER_TEMP/settings-navigation-smoke" "${PUBLISHED_TAG#yourbuddy-v}" --settings-navigation
+
+      - name: Report Settings navigation outcome
+        if: always()
+        run: |
+          result="$RUNNER_TEMP/settings-navigation-smoke/evidence/settings-navigation-result.json"
+          status=unverified
+          if test -f "$result"; then
+            status="$(node -e 'console.log(JSON.parse(require("node:fs").readFileSync(process.argv[1])).status)' "$result")"
+          fi
+          case "$status" in
+            passed) message="Verified: Account → Settings → Close returned to the workbench." ;;
+            regression) message="Regression: complete UI observations did not show the expected navigation state."
+              echo "::error::$message" ;;
+            *) message="Unverified: setup or UI automation could not establish the result."
+              echo "::warning::$message" ;;
+          esac
+          printf '### Native Settings navigation (advisory)\n\n%s\n' "$message" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Settings navigation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: yourbuddy-settings-navigation-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/settings-navigation-smoke/evidence/
           if-no-files-found: warn
           retention-days: 7
