@@ -2,7 +2,7 @@
 
 [English](codex-auth.md) | 中文
 
-随应用集成的快照版本：`0.3.3-rc.4`。来源：[suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth)。
+随应用集成的快照版本：`0.3.4-rc.2`，记录于[随包来源清单](../../../../apps/desktop-tauri/product/dsh-codex-auth/YOURBUDDY_UPSTREAM.json)。来源：[suntianc/dsh-codex-auth](https://github.com/suntianc/dsh-codex-auth)。
 
 ## 解决的问题
 

@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/settings.md
 /workbench-settings:
-  en: a9438d4230758b60
-  zh: 566900c90497a4e2
+  en: 7a7412946f36c3e0
+  zh: 33dd712de168d5df
 /workbench-settings/workbench-identity:
   en: 1e9dcc196629c240
   zh: 38bb16d3dfc9b619

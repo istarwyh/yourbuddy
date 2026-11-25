@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/user/product/plugins/codex-auth.md
 /codex-auth:
-  en: 6ebeccc63244101e
-  zh: d44808131186da19
+  en: c8fdbad07809d250
+  zh: 35f5b7f78f6586c8
 /codex-auth/problem-addressed:
   en: 44a3e476e42db10b
   zh: 60a52f785e2aad8e
