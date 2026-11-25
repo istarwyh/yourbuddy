@@ -26,6 +26,9 @@ interface Workflow {
   env: Record<string, string>
   jobs: Record<string, {
     'runs-on': string
+    needs?: string
+    outputs?: Record<string, string>
+    permissions?: Record<string, string>
     if?: string
     'continue-on-error'?: boolean
     steps: Step[]
@@ -46,7 +49,7 @@ function evaluate(expression: string | undefined, context: Record<string, string
 }
 
 function assertPublicationGates(candidate: Workflow): void {
-  expect(Object.keys(candidate.jobs)).toEqual(['build'])
+  expect(Object.keys(candidate.jobs)).toEqual(['build', 'settings-navigation'])
   const build = candidate.jobs.build!
   expect(build['runs-on']).toBe('macos-15')
   expect(build.if).toBeUndefined()
@@ -241,6 +244,27 @@ describe('YourBuddy first publication', () => {
     } finally {
       rmSync(fixture, { recursive: true, force: true })
     }
+  })
+
+  it('runs Settings navigation only after a same-run publish, with read-only permissions', () => {
+    const { build, 'settings-navigation': navigation } = workflow.jobs
+    expect(build).toMatchObject({ outputs: { 'published-tag': '${{ steps.publish.outputs.tag }}' } })
+    expect(build!.needs).toBeUndefined()
+    expect(build!.steps.find(step => step.name === 'Publish release')?.run?.trimEnd())
+      .toMatch(/printf 'tag=%s\\n' "\$RELEASE_TAG" >> "\$GITHUB_OUTPUT"$/)
+    expect(build!.steps.some(step => step.run?.includes('--settings-navigation'))).toBe(false)
+    expect(navigation).toMatchObject({
+      needs: 'build',
+      if: "needs.build.outputs.published-tag != ''",
+      permissions: { contents: 'read' },
+      'continue-on-error': true,
+      'timeout-minutes': 20,
+    })
+    expect(navigation!.steps.map(step => step.run).join('\n')).not.toMatch(/gh release (?:create|upload)/)
+    expect(navigation!.steps.find(step => step.name === 'Verify Account → Settings → Close')?.run)
+      .toContain('--settings-navigation')
+    expect(navigation!.steps.find(step => step.name === 'Report Settings navigation outcome')?.if)
+      .toBe('always()')
   })
 
   it('retains token permissions and keeps checkout credentials out of persisted Git configuration', () => {
@@ -556,7 +580,7 @@ describe('YourBuddy first publication', () => {
       build.steps.map(step => step.name === 'Verify prepared default workbench and optional Harbor' ? { ...step, run: step.run!.replace('await verifyPreparedProduct(', 'await skippedProductCheck(') } : step),
       build.steps.map(step => step.name === 'Publish the verified master tag atomically' ? { ...step, 'continue-on-error': true } : step),
     ]) {
-      expect(() => { assertPublicationGates({ ...workflow, jobs: { build: { ...build, steps: changedSteps } } }) }).toThrow()
+      expect(() => { assertPublicationGates({ ...workflow, jobs: { ...workflow.jobs, build: { ...build, steps: changedSteps } } }) }).toThrow()
     }
   })
 })
