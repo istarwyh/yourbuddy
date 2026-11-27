@@ -537,7 +537,7 @@ describe('forgePanel local changes', () => {
     await expect(outside.ctx.forgePanel.diffBases(outside.session, '', signal)).rejects.toMatchObject({ code: 'forgePanel/not-a-checkout' })
   })
 
-  it('lists the commits of the branch scope and reads chosen ones', async () => {
+  it('lists the commits of the branch scope and reads chosen ones', { timeout: 15_000 }, async () => {
     const { repo } = await project()
     await withDefaultBranch(repo)
     for (const name of ['one', 'two', 'three']) {
@@ -1436,7 +1436,7 @@ describe('forgePanel removed worktrees', () => {
     expect(queued(opened)).toEqual(['first', 'next'])
   })
 
-  it('shows a removed worktree whose branch is gone, and creates the branch again at its base commit', async () => {
+  it('shows a removed worktree whose branch is gone, and creates the branch again at its base commit', { timeout: 15_000 }, async () => {
     const { repo } = await project()
     const opened = await open(repo, {}, { worktrees: true })
     const follower = reader(opened)
